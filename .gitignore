@@ -1,0 +1,12 @@
+# folder
+bin
+lib
+local
+include
+
+# pyc
+*.pyc
+
+# Vim
+*.swp
+
