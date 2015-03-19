@@ -31,10 +31,33 @@ def get_options():
                       help='Container Name', dest='container', default='vhds')
     parser.add_option('-b', '--hostbase', action='store', type='string',
                       help='Host Base', dest='host_base', default='.blob.core.windows.net')
+    parser.add_option('-e', '--ext', action='store', type='int',
+                      help='EXT2/3/4', dest='ext', default='4')
     parser.add_option('-t', '--test', action='store_true', dest='test',
                       help='Test the difference between sync and async.')
 
     return parser.parse_args()
+
+
+def log_time(fn):
+    """TODO: Docstring for log_time.
+
+    :fn: TODO
+    :returns: TODO
+
+    """
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+
+        result = fn(*args, **kwargs)
+
+        end_time = time.time()
+        print_info('Time used : {0}'.format(end_time - start_time))
+
+        return result
+
+    return wrapper
 
 
 def check_vhd_type(options):
@@ -197,7 +220,24 @@ def get_data_from_indir_ptr3(indir_ptr, start_at_byte, options):
     return data
 
 
-def get_data_from_inode(inode, start_at_byte, options):
+def get_data_from_extent(extent, start_at_byte, options):
+    """TODO: Docstring for get_data_from_extent.
+
+    :extent: TODO
+    :start_at_byte: TODO
+    :options: TODO
+    :returns: TODO
+
+    """
+    block_ptr = (extent.start_hi << 32) + extent.start_lo
+    offset = block_ptr_to_byte(block_ptr, options)
+    blob_page = get_blob_page(start_at_byte, offset,
+                              extent.len*options.block_size-1, options)
+
+    return blob_page
+
+
+def download_from_ext3_inode(inode, start_at_byte, options):
     """TODO: Docstring for get_data_from_inode.
 
     :inode: TODO
@@ -224,7 +264,21 @@ def get_data_from_inode(inode, start_at_byte, options):
         elif index == 14:
             data = get_data_from_indir_ptr3(ptr, start_at_byte, options)
 
-    return data
+    return True
+
+
+def download_from_ext4_inode(inode, start_at_byte, options):
+    """TODO: Docstring for get_data_from_ext4_inode.
+
+    :inode: TODO
+    :start_at_byte: TODO
+    :options: TODO
+    :returns: TODO
+
+    """
+    get_data_from_extent(inode.ext4_extent[0], start_at_byte, options)
+
+    return True
 
 
 def block_ptr_to_byte(block_ptr, options):
@@ -268,14 +322,18 @@ def parse_partition(partition, options):
     options.block_size = parse_KB(superblock)
     group_desc_table = get_group_desc_table(start_at_byte, options)
 
-    group_num = ((superblock.blocks_count - superblock.first_data_block - 1) /
-                 superblock.blocks_per_group) + 1
-
     for group_desc in group_desc_table.group_desc:
         if superblock.inode_size == 128:
-            Inode = Inode_128
-        if superblock.inode_size == 256:
-            Inode = Inode_256
+            if options.ext == 4:
+                Inode = Ext4_inode_128
+            else:
+                Inode = Ext3_inode_128
+        elif superblock.inode_size == 256:
+            if options.ext == 4:
+                Inode = Ext4_inode_256
+            else:
+                Inode = Ext3_inode_256
+
         Inode_table = Struct('inode_table',
                              Array(superblock.inodes_per_group, Inode),
                              )
@@ -284,16 +342,12 @@ def parse_partition(partition, options):
         blob_page = get_blob_page(start_at_byte, offset, table_size, options)
         inode_table = Inode_table.parse(blob_page)
 
-        print inode_table.inode[173]
-        print get_data_from_inode(inode_table.inode[173], start_at_byte, options)
-        exit(0)
-        print inode_table.inode[1]
-        print inode_table.inode[10]
-        print inode_table.inode[2006]
-        print inode_table.inode[670]
-        print inode_table.inode[171]
-        print inode_table.inode[181]
-        print group_desc
+        print inode_table.inode[1285]
+        inode_table.inode[1285].flags.EXTENTS and \
+                download_from_ext4_inode(inode_table.inode[1285],
+                                         start_at_byte, options) \
+                or download_from_ext3_inode(inode_table.inode[1285],
+                                            start_at_byte, options)
         exit(0)
 
 
@@ -311,8 +365,14 @@ def parse_image(options):
     mbr = Mbr.parse(blob_page)
 
     for partition in mbr.mbr_partition_entry:
-        partition.boot_indicator == 0x80 and \
-                parse_partition(partition, options)
+        pt = partition.partition_type
+        if pt == 0x83 or pt == 0x93:
+            partition.boot_indicator == 0x80 and \
+                    parse_partition(partition, options)
+        else:
+            print 'Unsupported \'partition type\' / \'file system\'.'
+
+    return True
 
 
 def main():

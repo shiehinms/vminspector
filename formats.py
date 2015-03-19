@@ -80,7 +80,7 @@ Group_desc_table2 = Struct('group_desc_table2',
                           )
 
 
-Inode_128 = Struct("inode",
+Ext3_inode_128 = Struct("inode",
                FlagsEnum(ULInt16('mode'),
                          IFSOCK =  0xC000,
                          IFLNK  =  0xA000,
@@ -136,7 +136,43 @@ Inode_128 = Struct("inode",
                )
 
 
-Inode_256 = Struct("inode",
+Ext3_inode_256 = Struct("inode",
+                        Embed(Ext3_inode_128),
+                        Padding(128),
+                        )
+
+
+Ext4_extent_header = Struct('ext4_extent_header',
+                            ULInt16('magic'),
+                            ULInt16('entries'),
+                            ULInt16('max'),
+                            ULInt16('depth'),
+                            ULInt32('generation'),
+                            )
+
+
+Ext4_extent_idx = Struct('ext4_extent_idx',
+                         ULInt32('block'),
+                         ULInt32('leaf_lo'),
+                         ULInt16('leaf_hi'),
+                         ULInt16('unused'),
+                         )
+
+
+Ext4_extent = Struct('ext4_extent',
+                     ULInt32('block'),
+                     ULInt16('len'),
+                     ULInt16('start_hi'),
+                     ULInt32('start_lo'),
+                     )
+
+
+Ext4_extent_placeholder = Struct('ext4_extent_placeholder',
+                                 Padding(12),
+                                 )
+
+
+Ext4_inode_128 = Struct("inode",
                FlagsEnum(ULInt16('mode'),
                          IFSOCK =  0xC000,
                          IFLNK  =  0xA000,
@@ -168,28 +204,48 @@ Inode_256 = Struct("inode",
                ULInt16('links_count'),
                ULInt32('blocks'),
                FlagsEnum(ULInt32('flags'),
-                        SECRM        = 0x00000001,
-                        UNRM         = 0x00000002,
-                        COMPR        = 0x00000004,
-                        SYNC         = 0x00000008,
-                        IMMUTABLE    = 0x00000010,
-                        APPEND       = 0x00000020,
-                        NODUMP       = 0x00000040,
-                        NOATIME      = 0x00000080,
-                        DIRTY        = 0x00000100,
-                        COMPRBLK     = 0x00000200,
-                        NOCOMPR      = 0x00000400,
-                        ECOMPR       = 0x00000800,
-                        BTREE        = 0x00001000,
-                        INDEX        = 0x00001000,
-                        IMAGIC       = 0x00002000,
-                        JOURNAL_DATA = 0x00004000,
-                        RESERVED     = 0x80000000,
+                        SECRM            = 0x00000001,
+                        UNRM             = 0x00000002,
+                        COMPR            = 0x00000004,
+                        SYNC             = 0x00000008,
+                        IMMUTABLE        = 0x00000010,
+                        APPEND           = 0x00000020,
+                        NODUMP           = 0x00000040,
+                        NOATIME          = 0x00000080,
+                        DIRTY            = 0x00000100,
+                        COMPRBLK         = 0x00000200,
+                        NOCOMPR          = 0x00000400,
+                        ECOMPR           = 0x00000800,
+                        BTREE            = 0x00001000,
+                        INDEX            = 0x00001000,
+                        IMAGIC           = 0x00002000,
+                        JOURNAL_DATA     = 0x00004000,
+                        NOTAIL           = 0x8000,
+                        DIRSYNC          = 0x10000,
+                        TOPDIR           = 0x20000,
+                        HUGE_FILE        = 0x40000,
+                        EXTENTS          = 0x80000,
+                        EA_INODE         = 0x200000,
+                        EOFBLOCKS        = 0x400000,
+                        SNAPFILE         = 0x01000000,
+                        SNAPFILE_DELETED = 0x04000000,
+                        SNAPFILE_SHRUNK  = 0x08000000,
+                        INLINE_DATA      = 0x10000000,
+                        USER1            = 0x4BDFFF,
+                        USER2            = 0x4B80FF,
+                        RESERVED         = 0x80000000,
                         ),
                ULInt32('i_reserved1'),
-               Array(15, ULInt32('blocks_ptr')),
-               Padding(156),
+               Ext4_extent_header,
+               Array(4, Ext4_extent),
+               Padding(28),
                )
+
+
+Ext4_inode_256 = Struct("inode",
+                        Embed(Ext4_inode_128),
+                        Padding(128),
+                        )
 
 
 # special inodes
