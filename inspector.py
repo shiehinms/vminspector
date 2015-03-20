@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 
+import copy
 import optparse
 from construct import *
 from functools import wraps
@@ -237,6 +238,59 @@ def get_data_from_extent(extent, start_at_byte, options):
     return blob_page
 
 
+def get_data_from_idx(idx, start_at_byte, options):
+    """TODO: Docstring for get_data_from_idx.
+
+    :idx: TODO
+    :start_at_byte: TODO
+    :options: TODO
+    :returns: TODO
+
+    """
+    block_ptr = (idx.leaf_hi << 32) + idx.leaf_lo
+    offset = block_ptr_to_byte(block_ptr, options)
+    blob_page = get_blob_page(start_at_byte, offset,
+                              options.block_size-1, options)
+    Node_block = Struct('index_node_block',
+                              Ext4_extent_header,
+                              Array(options.block_size/12, Ext4_extent),
+                              )
+
+    return Node_block.parse(blob_page)
+
+
+def get_data_from_ext4_tree(extent_tree, start_at_byte, options):
+    """TODO: Docstring for get_data_from_ext4_i_block.
+
+    :extent_tree: TODO
+    :returns: TODO
+
+    """
+    if extent_tree.ext4_extent_header.depth == 0:
+        tmp = sorted([(extent.block, get_data_from_extent(extent,
+                                                          start_at_byte,
+                                                          options))
+                      for index, extent in enumerate(extent_tree.ext4_extent)
+                      if index < extent_tree.ext4_extent_header.entries],
+                     key=lambda e: e[0])
+
+        return reduce(lambda a, b: (0, a[1]+b[1]), tmp)[1]
+
+    else:
+        Indexs = Array(extent_tree.ext4_extent_header.max, Ext4_extent_idx)
+        indexs = Indexs.parse(Extents.build(extent_tree.ext4_extent))
+        tmp = sorted([(idx.block, get_data_from_ext4_tree(get_data_from_idx(node_block,
+                                                                            start_at_byte,
+                                                                            options),
+                                                          start_at_byte,
+                                                          options))
+                      for index, idx in enumerate(indexs)
+                      if index < extent_tree.ext4_extent_header.entries],
+                     key=lambda e: e[0])
+
+        return reduce(lambda a, b: (0, a[1]+b[1]), tmp)[1]
+
+
 def download_from_ext3_inode(inode, start_at_byte, options):
     """TODO: Docstring for get_data_from_inode.
 
@@ -276,7 +330,11 @@ def download_from_ext4_inode(inode, start_at_byte, options):
     :returns: TODO
 
     """
-    get_data_from_extent(inode.ext4_extent[0], start_at_byte, options)
+    data = get_data_from_ext4_tree(inode.ext4_extent_tree,
+                                      start_at_byte,
+                                      options)[:inode.size]
+    with open('result.txt', 'w') as result:
+        result.write(data)
 
     return True
 
@@ -342,12 +400,12 @@ def parse_partition(partition, options):
         blob_page = get_blob_page(start_at_byte, offset, table_size, options)
         inode_table = Inode_table.parse(blob_page)
 
-        print inode_table.inode[1285]
-        inode_table.inode[1285].flags.EXTENTS and \
-                download_from_ext4_inode(inode_table.inode[1285],
+        inode_table.inode[422].flags.EXTENTS and \
+                download_from_ext4_inode(inode_table.inode[422],
                                          start_at_byte, options) \
-                or download_from_ext3_inode(inode_table.inode[1285],
+                or download_from_ext3_inode(inode_table.inode[422],
                                             start_at_byte, options)
+
         exit(0)
 
 
@@ -368,7 +426,7 @@ def parse_image(options):
         pt = partition.partition_type
         if pt == 0x83 or pt == 0x93:
             partition.boot_indicator == 0x80 and \
-                    parse_partition(partition, options)
+                    parse_partition(partition, copy.deepcopy(options))
         else:
             print 'Unsupported \'partition type\' / \'file system\'.'
 

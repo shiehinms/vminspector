@@ -167,6 +167,18 @@ Ext4_extent = Struct('ext4_extent',
                      )
 
 
+Ext4_extents = Array(4, Ext4_extent)
+
+
+Ext4_indexs = Array(4, Ext4_extent_idx)
+
+
+Ext4_Extent_tree = Struct('ext4_extent_tree',
+                          Ext4_extent_header,
+                          Ext4_extents,
+                          )
+
+
 Ext4_extent_placeholder = Struct('ext4_extent_placeholder',
                                  Padding(12),
                                  )
@@ -236,8 +248,7 @@ Ext4_inode_128 = Struct("inode",
                         RESERVED         = 0x80000000,
                         ),
                ULInt32('i_reserved1'),
-               Ext4_extent_header,
-               Array(4, Ext4_extent),
+               Ext4_Extent_tree,
                Padding(28),
                )
 
