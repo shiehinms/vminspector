@@ -22,6 +22,8 @@ def get_options():
     """
     parser = optparse.OptionParser(usage=USAGE, version=VERSION)
 
+    parser.add_option('-p', '--path', action='store', type='string',
+                      help='Searching path', dest='path', default='/')
     parser.add_option('-n', '--name', action='store', type='string',
                       help='Account Name', dest='account_name', default='')
     parser.add_option('-k', '--key', action='store', type='string',
@@ -81,7 +83,7 @@ def check_vhd_type(options):
     return hd_ftr.type
 
 
-def get_superblock(start_at_byte, options):
+def get_superblock(options):
     """TODO: Docstring for get_superblock.
 
     :partition: TODO
@@ -89,15 +91,14 @@ def get_superblock(start_at_byte, options):
     :returns: TODO
 
     """
-    blob_page = get_blob_page(start_at_byte, 1024, 1024, options)
+    blob_page = get_blob_page(1024, 1024, options)
 
     return Superblock.parse(blob_page)
 
 
-def get_group_desc_table(start_at_byte, options):
+def get_group_desc_table(options):
     """TODO: Docstring for get_group_desc_table.
 
-    :start_at_byte: TODO
     :options: TODO
     :returns: TODO
 
@@ -113,12 +114,12 @@ def get_group_desc_table(start_at_byte, options):
         offset = 4096
         Group_desc_table = Group_desc_table2
 
-    blob_page = get_blob_page(start_at_byte, offset, options.block_size, options)
+    blob_page = get_blob_page(offset, options.block_size, options)
 
     return Group_desc_table.parse(blob_page)
 
 
-def get_blob_page(start_at_byte, offset, page_size, options):
+def get_blob_page(offset, page_size, options):
     """TODO: Docstring for get_blob_page.
 
     :offset: TODO
@@ -127,8 +128,8 @@ def get_blob_page(start_at_byte, offset, page_size, options):
     :returns: TODO
 
     """
-    rangerange = 'bytes=' + str(start_at_byte+offset) + \
-            '-' + str(start_at_byte+offset+page_size-1)
+    rangerange = 'bytes=' + str(options.start_at_byte+offset) + \
+            '-' + str(options.start_at_byte+offset+page_size-1)
     blob_page = options.blob_service.get_blob(options.container,
                                               options.vhd,
                                               x_ms_range=rangerange)
@@ -136,27 +137,24 @@ def get_blob_page(start_at_byte, offset, page_size, options):
     return blob_page
 
 
-def get_data_from_dir_ptr(dir_ptr, start_at_byte, options):
+def get_data_from_dir_ptr(dir_ptr, options):
     """TODO: Docstring for get_data_from_dir_ptr.
 
     :dir_ptr: TODO
-    :start_at_byte: TODO
     :options: TODO
     :returns: TODO
 
     """
     offset = block_ptr_to_byte(dir_ptr, options)
-    blob_page = get_blob_page(start_at_byte, offset,
-                              options.block_size, options)
+    blob_page = get_blob_page(offset, options.block_size, options)
 
     return blob_page
 
 
-def get_data_from_indir_ptr1(indir_ptr, start_at_byte, options):
+def get_data_from_indir_ptr1(indir_ptr, options):
     """TODO: Docstring for get_data_from_indir_ptr1.
 
     :indir_ptr: TODO
-    :start_at_byte: TODO
     :options: TODO
     :returns: TODO
 
@@ -165,21 +163,20 @@ def get_data_from_indir_ptr1(indir_ptr, start_at_byte, options):
                             Array(options.block_size/4, ULInt32('indir_ptr')),
                             )
     offset = block_ptr_to_byte(dir_ptr, options)
-    blob_page = get_blob_page(start_at_byte, offset, options.block_size, options)
+    blob_page = get_blob_page(offset, options.block_size, options)
     indir_ptr_list = Indir_ptr_list.parse(blob_page)
 
     data = ''
     for dir_ptr in indir_ptr_list.indir_ptr_list:
-        data = data + get_data_from_dir_ptr(dir_ptr, start_at_byte, options)
+        data = data + get_data_from_dir_ptr(dir_ptr, options)
 
     return data
 
 
-def get_data_from_indir_ptr2(indir_ptr, start_at_byte, options):
+def get_data_from_indir_ptr2(indir_ptr, options):
     """TODO: Docstring for get_data_from_indir_ptr2.
 
     :indir_ptr: TODO
-    :start_at_byte: TODO
     :options: TODO
     :returns: TODO
 
@@ -188,21 +185,20 @@ def get_data_from_indir_ptr2(indir_ptr, start_at_byte, options):
                             Array(options.block_size/4, ULInt32('indir_ptr')),
                             )
     offset = block_ptr_to_byte(dir_ptr, options)
-    blob_page = get_blob_page(start_at_byte, offset, options.block_size, options)
+    blob_page = get_blob_page(offset, options.block_size, options)
     indir_ptr_list = Indir_ptr_list.parse(blob_page)
 
     data = ''
     for indir_ptr1 in indir_ptr_list.indir_ptr_list:
-        data = data + get_data_from_indir_ptr1(dir_ptr, start_at_byte, options)
+        data = data + get_data_from_indir_ptr1(dir_ptr, options)
 
     return data
 
 
-def get_data_from_indir_ptr3(indir_ptr, start_at_byte, options):
+def get_data_from_indir_ptr3(indir_ptr, options):
     """TODO: Docstring for get_data_from_indir_ptr3.
 
     :indir_ptr: TODO
-    :start_at_byte: TODO
     :options: TODO
     :returns: TODO
 
@@ -211,46 +207,42 @@ def get_data_from_indir_ptr3(indir_ptr, start_at_byte, options):
                             Array(options.block_size/4, ULInt32('indir_ptr')),
                             )
     offset = block_ptr_to_byte(dir_ptr, options)
-    blob_page = get_blob_page(start_at_byte, offset, options.block_size, options)
+    blob_page = get_blob_page(offset, options.block_size, options)
     indir_ptr_list = Indir_ptr_list.parse(blob_page)
 
     data = ''
     for indir_ptr2 in indir_ptr_list.indir_ptr_list:
-        data = data + get_data_from_indir_ptr2(dir_ptr, start_at_byte, options)
+        data = data + get_data_from_indir_ptr2(dir_ptr, options)
 
     return data
 
 
-def get_data_from_extent(extent, start_at_byte, options):
+def get_data_from_extent(extent, options):
     """TODO: Docstring for get_data_from_extent.
 
     :extent: TODO
-    :start_at_byte: TODO
     :options: TODO
     :returns: TODO
 
     """
     block_ptr = (extent.start_hi << 32) + extent.start_lo
     offset = block_ptr_to_byte(block_ptr, options)
-    blob_page = get_blob_page(start_at_byte, offset,
-                              extent.len*options.block_size-1, options)
+    blob_page = get_blob_page(offset, extent.len*options.block_size-1, options)
 
     return blob_page
 
 
-def get_data_from_idx(idx, start_at_byte, options):
+def get_data_from_idx(idx, options):
     """TODO: Docstring for get_data_from_idx.
 
     :idx: TODO
-    :start_at_byte: TODO
     :options: TODO
     :returns: TODO
 
     """
     block_ptr = (idx.leaf_hi << 32) + idx.leaf_lo
     offset = block_ptr_to_byte(block_ptr, options)
-    blob_page = get_blob_page(start_at_byte, offset,
-                              options.block_size-1, options)
+    blob_page = get_blob_page(offset, options.block_size-1, options)
     Node_block = Struct('index_node_block',
                               Ext4_extent_header,
                               Array(options.block_size/12, Ext4_extent),
@@ -259,7 +251,7 @@ def get_data_from_idx(idx, start_at_byte, options):
     return Node_block.parse(blob_page)
 
 
-def get_data_from_ext4_tree(extent_tree, start_at_byte, options):
+def get_data_from_ext4_tree(extent_tree, options):
     """TODO: Docstring for get_data_from_ext4_i_block.
 
     :extent_tree: TODO
@@ -267,9 +259,7 @@ def get_data_from_ext4_tree(extent_tree, start_at_byte, options):
 
     """
     if extent_tree.ext4_extent_header.depth == 0:
-        tmp = sorted([(extent.block, get_data_from_extent(extent,
-                                                          start_at_byte,
-                                                          options))
+        tmp = sorted([(extent.block, get_data_from_extent(extent, options))
                       for index, extent in enumerate(extent_tree.ext4_extent)
                       if index < extent_tree.ext4_extent_header.entries],
                      key=lambda e: e[0])
@@ -280,9 +270,7 @@ def get_data_from_ext4_tree(extent_tree, start_at_byte, options):
         Indexs = Array(extent_tree.ext4_extent_header.max, Ext4_extent_idx)
         indexs = Indexs.parse(Extents.build(extent_tree.ext4_extent))
         tmp = sorted([(idx.block, get_data_from_ext4_tree(get_data_from_idx(node_block,
-                                                                            start_at_byte,
                                                                             options),
-                                                          start_at_byte,
                                                           options))
                       for index, idx in enumerate(indexs)
                       if index < extent_tree.ext4_extent_header.entries],
@@ -291,11 +279,10 @@ def get_data_from_ext4_tree(extent_tree, start_at_byte, options):
         return reduce(lambda a, b: (0, a[1]+b[1]), tmp)[1]
 
 
-def download_from_ext3_inode(inode, start_at_byte, options):
+def download_from_ext3_inode(inode, filename, options):
     """TODO: Docstring for get_data_from_inode.
 
     :inode: TODO
-    :start_at_byte: TODO
     :options: TODO
     :returns: TODO
 
@@ -306,34 +293,31 @@ def download_from_ext3_inode(inode, start_at_byte, options):
             break
 
         offset = block_ptr_to_byte(ptr, options)
-        blob_page = get_blob_page(start_at_byte, offset,
-                                  options.block_size, options)
+        blob_page = get_blob_page(offset, options.block_size, options)
 
         if index < 12:
             data = data + blob_page
         elif index == 12:
-            data = get_data_from_indir_ptr1(ptr, start_at_byte, options)
+            data = get_data_from_indir_ptr1(ptr, options)
         elif index == 13:
-            data = get_data_from_indir_ptr2(ptr, start_at_byte, options)
+            data = get_data_from_indir_ptr2(ptr, options)
         elif index == 14:
-            data = get_data_from_indir_ptr3(ptr, start_at_byte, options)
+            data = get_data_from_indir_ptr3(ptr, options)
 
     return True
 
 
-def download_from_ext4_inode(inode, start_at_byte, options):
+def download_from_ext4_inode(inode, filename, options):
     """TODO: Docstring for get_data_from_ext4_inode.
 
     :inode: TODO
-    :start_at_byte: TODO
     :options: TODO
     :returns: TODO
 
     """
     data = get_data_from_ext4_tree(inode.ext4_extent_tree,
-                                      start_at_byte,
-                                      options)[:inode.size]
-    with open('result.txt', 'w') as result:
+                                   options)[:inode.size]
+    with open(filename, 'w') as result:
         result.write(data)
 
     return True
@@ -367,6 +351,48 @@ def parse_KB(superblock):
     return result
 
 
+def split_path(path):
+    """TODO: Docstring for split_path.
+
+    :path: TODO
+    :returns: TODO
+
+    """
+    item = [x for x in path.split('/') if x != '']
+
+    return item
+
+
+def search_dir(inode, index, options):
+    """TODO: Docstring for search_dir.
+
+    :inode: TODO
+    :returns: TODO
+
+    """
+    data = get_data_from_ext4_tree(inode.ext4_extent_tree, options)
+
+    with open('result.txt', 'w') as result:
+        result.write(data)
+
+    if options.filetype:
+        Directory = OptionalGreedyRange(Dir_entry2)
+        directory = Directory.parse(data)
+        result =  [item.inode for item in directory
+                if item.name == options.path_list[index]]
+    else:
+        pass
+
+    print directory
+    print len(data)
+    print len(directory)
+    print result
+
+    exit(0)
+
+    return result
+
+
 def parse_partition(partition, options):
     """TODO: Docstring for parse_partition.
 
@@ -375,10 +401,11 @@ def parse_partition(partition, options):
     :returns: TODO
 
     """
-    start_at_byte = partition.starting_sector * 512
-    superblock = get_superblock(start_at_byte, options)
+    options.start_at_byte = partition.starting_sector * 512
+    superblock = get_superblock(options)
     options.block_size = parse_KB(superblock)
-    group_desc_table = get_group_desc_table(start_at_byte, options)
+    options.filetype = superblock.feature_incompat.FILETYPE
+    group_desc_table = get_group_desc_table(options)
 
     for group_desc in group_desc_table.group_desc:
         if superblock.inode_size == 128:
@@ -397,14 +424,16 @@ def parse_partition(partition, options):
                              )
         offset = block_ptr_to_byte(group_desc.inode_table_ptr, options)
         table_size = superblock.inodes_per_group * superblock.inode_size
-        blob_page = get_blob_page(start_at_byte, offset, table_size, options)
+        blob_page = get_blob_page(offset, table_size, options)
         inode_table = Inode_table.parse(blob_page)
 
+        print inode_table.inode[1]
+        target = search_dir(inode_table.inode[1], 0, options)
+        exit(0)
+
         inode_table.inode[422].flags.EXTENTS and \
-                download_from_ext4_inode(inode_table.inode[422],
-                                         start_at_byte, options) \
-                or download_from_ext3_inode(inode_table.inode[422],
-                                            start_at_byte, options)
+                download_from_ext4_inode(inode_table.inode[422], 'result.txt', options) \
+                or download_from_ext3_inode(inode_table.inode[422], 'result.txt', options)
 
         exit(0)
 
@@ -444,6 +473,7 @@ def main():
                                options.account_key,
                                host_base=options.host_base)
     options.blob_service = blob_service
+    options.path_list = split_path(options.path)
 
     check_vhd_type(options) == HD_TYPE_FIXED and \
             parse_image(options)

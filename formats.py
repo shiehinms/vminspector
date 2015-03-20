@@ -49,7 +49,24 @@ Superblock = Struct("superblock",
                 ULInt16('inode_size'),
                 ULInt16('block_group_nr'),
                 ULInt32('feature_compat'),
-                Padding(464),
+                FlagsEnum(ULInt32('feature_incompat'),
+                          COMPRESSION      = 0x1,
+                          FILETYPE         = 0x2,
+                          RECOVER          = 0x4,
+                          JOURNAL_DEV      = 0x8,
+                          META_BG          = 0x10,
+                          EXTENTS          = 0x40,
+                          _64BIT           = 0x80,
+                          MMP              = 0x100,
+                          FLEX_BG          = 0x200,
+                          EA_INODE         = 0x400,
+                          DIRDATA          = 0x1000,
+                          BG_USE_META_CSUM = 0x2000,
+                          LARGEDIR         = 0x4000,
+                          INLINE_DATA      = 0x8000,
+                          ENCRYPT          = 0x10000,
+                          ),
+                Padding(460),
                 )
 
 
@@ -124,7 +141,6 @@ Ext3_inode_128 = Struct("inode",
                         COMPRBLK     = 0x00000200,
                         NOCOMPR      = 0x00000400,
                         ECOMPR       = 0x00000800,
-                        BTREE        = 0x00001000,
                         INDEX        = 0x00001000,
                         IMAGIC       = 0x00002000,
                         JOURNAL_DATA = 0x00004000,
@@ -228,7 +244,6 @@ Ext4_inode_128 = Struct("inode",
                         COMPRBLK         = 0x00000200,
                         NOCOMPR          = 0x00000400,
                         ECOMPR           = 0x00000800,
-                        BTREE            = 0x00001000,
                         INDEX            = 0x00001000,
                         IMAGIC           = 0x00002000,
                         JOURNAL_DATA     = 0x00004000,
@@ -269,13 +284,32 @@ EXT2_UNDEL_DIR_INO = 6
 EXT2_FIRST_INO = 11 
 
 
-Dir_entry = Struct("dir_entry",
-                   ULInt32("inode"),
-                   ULInt16("rec_length"),
-                   ULInt8("name_length"),
-                   ULInt8("file_type"),
-                   Field("name", lambda ctx: ctx["name_length"]),
-                   )
+Dir_entry1 = Struct("dir_entry1",
+                    ULInt32("inode"),
+                    ULInt16("rec_length"),
+                    ULInt16("name_length"),
+                    Field("name", lambda ctx: ctx["name_length"]),
+                    Padding(lambda ctx: ctx["rec_length"]-ctx["name_length"]-8)
+                    )
+
+
+Dir_entry2 = Struct("dir_entry2",
+                    ULInt32("inode"),
+                    ULInt16("rec_length"),
+                    ULInt8("name_length"),
+                    Enum(ULInt8('file_type'), 
+                         Unknown = 0x0,
+                         REG     = 0x1,
+                         DIR     = 0x2,
+                         CHR     = 0x3,
+                         BLK     = 0x4,
+                         FIFO    = 0x5,
+                         SOC     = 0x6,
+                         LNK     = 0x7,
+                         ),
+                    Field("name", lambda ctx: ctx["name_length"]),
+                    Padding(lambda ctx: ctx["rec_length"] - ctx["name_length"]-8)
+                    )
 
 
 Mbr_pe = Struct('mbr_partition_entry',
