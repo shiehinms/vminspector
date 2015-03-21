@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
+
 from construct import *
 
 
@@ -80,21 +84,6 @@ Group_desc = Struct('group_desc',
                     ULInt16('pad'),
                     Array(3, ULInt32('reversed')),
                     )
-
-
-Group_desc_table0 = Struct('group_desc_table0',
-                           Array(32, Group_desc),
-                          )
-
-
-Group_desc_table1 = Struct('group_desc_table1',
-                           Array(64, Group_desc),
-                          )
-
-
-Group_desc_table2 = Struct('group_desc_table2',
-                           Array(128, Group_desc),
-                          )
 
 
 Ext3_inode_128 = Struct("inode",
@@ -349,4 +338,3 @@ Hd_ftr = Struct("hd_ftr",
                 SBInt8('hidden'),
                 Array(426, SBInt8('reserved')),
                 )
-
