@@ -1,5 +1,6 @@
 import optparse
 from functools import wraps
+from azure.storage import BlobService
 
 
 VERSION = 'v1.0.0'
@@ -29,7 +30,12 @@ def get_options():
     parser.add_option('-t', '--test', action='store_true', dest='test',
                       help='Test the difference between sync and async.')
 
-    return parser.parse_args()
+    (options, args) = parser.parse_args()
+    options.blob_service = BlobService(options.account_name, options.account_key,
+                                       host_base=options.host_base)
+    options.path_list = split_path(options.path)
+
+    return (options, args)
 
 
 def log_time(fn):
@@ -91,3 +97,14 @@ def split_path(path):
     item = [x for x in path.split('/') if x != '']
 
     return item
+
+
+def join_data(a, b):
+    """TODO: Docstring for join_data.
+
+    :a: TODO
+    :b: TODO
+    :returns: TODO
+
+    """
+    return ''.join([a, b])

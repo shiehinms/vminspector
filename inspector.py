@@ -9,17 +9,11 @@ from util import *
 from formats import *
 from construct import *
 from operator import add
-from azure.storage import BlobService
 
 
 HD_TYPE_FIXED = 2
 HD_TYPE_DYNAMIC = 3
 (options, args) = get_options()
-options.blob_service = BlobService(options.account_name, options.account_key,
-                                   host_base=options.host_base)
-options.path_list = split_path(options.path)
-options.path_num = len(options.path_list)
-
 
 
 @embed_params(blob_service=options.blob_service,
@@ -293,7 +287,8 @@ def parse_KB(superblock):
     return result
 
 
-def search_dir(ph, inode, index, block_size, filetype):
+@embed_params(path_list=options.path_list)
+def search_dir(ph, inode, index, block_size, filetype, path_list):
     """TODO: Docstring for search_dir.
 
     :inode: TODO
@@ -305,12 +300,12 @@ def search_dir(ph, inode, index, block_size, filetype):
     if filetype:
         Directory = OptionalGreedyRange(Dir_entry2)
         directory = Directory.parse(data)
-        if index == options.path_num:
+        if index == len(path_list):
             inodes =  [item.inode for item in directory
                        if os.path.splitext(item.name)[1] == '.log']
         else:
             inodes =  [item.inode for item in directory
-                       if item.name == options.path_list[index]]
+                       if item.name == path_list[index]]
     else:
         pass
 
