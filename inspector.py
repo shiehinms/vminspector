@@ -95,7 +95,7 @@ def get_data_dir(dir_ptr, block_size):
     return blob_page
 
 
-def get_data_indir1(ph, block_size, indir_ptr):
+def get_data_indir(ph, block_size, indir_ptr, dir_type):
     """TODO: Docstring for get_data_indir1.
 
     :indir_ptr: TODO
@@ -105,52 +105,19 @@ def get_data_indir1(ph, block_size, indir_ptr):
     """
     Indir_ptr_list = Struct('indir_ptr_list',
                             Array(block_size/4, ULInt32('indir_ptr')))
-    offset = block_ptr_to_byte(dir_ptr, block_size)
+    offset = block_ptr_to_byte(indir_ptr, block_size)
     blob_page = get_blob_page(ph, offset, block_size)
     parsed = Indir_ptr_list.parse(blob_page)
 
-    data = reduce(add, (get_data_dir(dir_ptr, block_size)
-                        for dir_ptr in parsed.indir_ptr_list))
-
-    return data
-
-
-def get_data_indir2(indir_ptr, block_size):
-    """TODO: Docstring for get_data_indir2.
-
-    :indir_ptr: TODO
-    :options: TODO
-    :returns: TODO
-
-    """
-    Indir_ptr_list = Struct('indir_ptr_list',
-                            Array(block_size/4, ULInt32('indir_ptr')))
-    offset = block_ptr_to_byte(dir_ptr, block_size)
-    blob_page = get_blob_page(ph, offset, block_size)
-    parsed = Indir_ptr_list.parse(blob_page)
-
-    data = reduce(add, (get_data_dir(dir_ptr1, block_size)
-                        for dir_ptr1 in parsed.indir_ptr_list))
-
-    return data
-
-
-def get_data_indir3(indir_ptr, block_size):
-    """TODO: Docstring for get_data_indir3.
-
-    :indir_ptr: TODO
-    :options: TODO
-    :returns: TODO
-
-    """
-    Indir_ptr_list = Struct('indir_ptr_list',
-                            Array(block_size/4, ULInt32('indir_ptr')))
-    offset = block_ptr_to_byte(dir_ptr, block_size)
-    blob_page = get_blob_page(ph, offset, block_size)
-    parsed = Indir_ptr_list.parse(blob_page)
-
-    data = reduce(add, (get_data_dir(dir_ptr2, block_size)
-                        for dir_ptr2 in parsed.indir_ptr_list))
+    if dir_type == 1:
+        data = reduce(add, (get_data_dir(dir_ptr, block_size)
+                            for dir_ptr in parsed.indir_ptr_list))
+    elif dir_type == 2:
+        data = reduce(add, (get_data_indir(ph, block_size, indir_ptr1, 1)
+                            for indir_ptr1 in parsed.indir_ptr_list))
+    elif dir_type == 3:
+        data = reduce(add, (get_data_indir(ph, block_size, indir_ptr2, 2)
+                            for indir_ptr2 in parsed.indir_ptr_list))
 
     return data
 
@@ -231,11 +198,11 @@ def download_ext3_file(ph, inode, filename, block_size):
         if index < 12:
             data = data + blob_page
         elif index == 12:
-            data = get_data_indir1(ptr, block_size)
+            data = get_data_indir(ph, block_size, ptr, 1)
         elif index == 13:
-            data = get_data_indir2(ptr, block_size)
+            data = get_data_indir(ph, block_size, ptr, 2)
         elif index == 14:
-            data = get_data_indir3(ptr, block_size)
+            data = get_data_indir(ph, block_size, ptr, 3)
 
     return True
 
