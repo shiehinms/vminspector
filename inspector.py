@@ -378,21 +378,12 @@ def parse_image(blob_service, container, vhd):
     for partition in mbr.mbr_partition_entry:
         pt = partition.partition_type
         if pt == 0x83 or pt == 0x93:
-            partition.boot_indicator == 0x80 and \
-                    parse_partition(partition)
+            partition.boot_indicator == 0x80 and parse_partition(partition)
         else:
             print 'Unsupported \'partition type\' / \'file system\'.'
 
     return True
 
 
-def main():
-    """TODO: Docstring for main.
-    :returns: TODO
-
-    """
-    check_vhd_type() == HD_TYPE_FIXED and parse_image()
-
-
 if __name__ == '__main__':
-    main()
+    check_vhd_type() == HD_TYPE_FIXED and parse_image()
