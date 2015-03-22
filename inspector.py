@@ -3,7 +3,6 @@
 
 
 import math
-import copy
 import os.path
 from util import *
 from formats import *
@@ -76,8 +75,7 @@ def get_blob_page(ph, offset, page_size,
     :returns: TODO
 
     """
-    rangerange = 'bytes=' + str(ph+offset) + \
-            '-' + str(ph+offset+page_size-1)
+    rangerange = 'bytes=' + str(ph+offset) + '-' + str(ph+offset+page_size-1)
     blob_page = blob_service.get_blob(container, vhd, x_ms_range=rangerange)
 
     return blob_page
@@ -146,7 +144,7 @@ def get_data_indir3(indir_ptr, block_size):
 
     """
     Indir_ptr_list = Struct('indir_ptr_list',
-                            Array(block_size/4, ULInt32('indir_ptr')),)
+                            Array(block_size/4, ULInt32('indir_ptr')))
     offset = block_ptr_to_byte(dir_ptr, block_size)
     blob_page = get_blob_page(ph, offset, block_size)
     parsed = Indir_ptr_list.parse(blob_page)
@@ -356,9 +354,10 @@ def parse_partition(partition):
                             block_size, superblock.feature_incompat.FILETYPE)
         exit(0)
 
-        inode_table.inode[422].flags.EXTENTS and \
-                download_ext4_file(inode_table.inode[422], 'result.txt', block_size) or\
-                download_ext3_file(inode_table.inode[422], 'result.txt', block_size)
+        test_inode = inode_table.inode[422]
+        test_inode.flags.EXTENTS and \
+                download_ext4_file(test_inode, 'result.txt', block_size) or\
+                download_ext3_file(test_inode, 'result.txt', block_size)
 
         exit(0)
 
