@@ -171,7 +171,7 @@ def get_data_idx(ph, idx, block_size):
     block_ptr = (idx.leaf_hi << 32) + idx.leaf_lo
     offset = block_ptr_to_byte(block_ptr, block_size)
     Node_block = Struct('index_node_block', Ext4_extent_header,
-                        Array(block_size/12, Ext4_extent))
+                        Array(block_size/12-1, Ext4_extent))
 
     return Node_block.parse(get_blob_page(ph, offset, block_size))
 
@@ -190,10 +190,11 @@ def get_data_ext4_tree(ph, extent_tree, block_size):
                      key=lambda e: e[0])
     else:
         Indexs = Array(extent_tree.ext4_extent_header.max, Ext4_extent_idx)
-        indexs = Indexs.parse(Extents.build(extent_tree.ext4_extent))
-        tmp = sorted([(idx.block, get_data_ext4_tree(get_data_idx(node_block,
-                                                                  block_size),
-                                                     block_size))
+        indexs = Indexs.parse(Ext4_extents.build(extent_tree.ext4_extent))
+        tmp = sorted([(idx.block,
+                       get_data_ext4_tree(ph, get_data_idx(ph, idx,
+                                                           block_size),
+                                          block_size))
                       for index, idx in enumerate(indexs)
                       if index < extent_tree.ext4_extent_header.entries],
                      key=lambda e: e[0])
