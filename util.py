@@ -1,5 +1,8 @@
+import os
 import optparse
+from time import time
 from functools import wraps
+from os.path import isdir, exists
 from azure.storage import BlobService
 
 
@@ -47,12 +50,12 @@ def log_time(fn):
     """
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        start_time = time.time()
+        start_time = time()
 
         result = fn(*args, **kwargs)
 
-        end_time = time.time()
-        print_info('Time used : {0}'.format(end_time - start_time))
+        end_time = time()
+        print '%s -> Time used : %d\n' % (fn.__name__, end_time - start_time)
 
         return result
 
@@ -73,6 +76,7 @@ def embed_params(**kwargs):
         :returns: TODO
 
         """
+        @wraps(fn)
         def wrapper(*arg):
             """TODO: Docstring for wrapper.
 
@@ -97,6 +101,20 @@ def split_path(path):
     item = [x for x in path.split('/') if x != '']
 
     return item
+
+
+def init_dir(path):
+    """TODO: Docstring for init_dir.
+
+    :path: TODO
+    :returns: TODO
+
+    """
+    if not isdir(path):
+        exists(path) and os.unlink(path)
+        os.makedirs(path)
+
+    return path
 
 
 def join_data(a, b):

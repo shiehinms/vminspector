@@ -3,11 +3,11 @@
 
 
 import math
-import os.path
 from util import *
 from formats import *
 from construct import *
 from operator import add
+from os.path import splitext, join
 
 
 HD_TYPE_FIXED = 2
@@ -15,6 +15,7 @@ HD_TYPE_DYNAMIC = 3
 (options, args) = get_options()
 
 
+@log_time
 @embed_params(blob_service=options.blob_service,
               container=options.container, vhd=options.vhd)
 def check_vhd_type(blob_service, container, vhd):
@@ -34,6 +35,7 @@ def check_vhd_type(blob_service, container, vhd):
     return hd_ftr.type
 
 
+@log_time
 def get_superblock(ph):
     """TODO: Docstring for get_superblock.
 
@@ -47,6 +49,7 @@ def get_superblock(ph):
     return Superblock.parse(blob_page)
 
 
+@log_time
 def get_group_desc_table(ph, block_size):
     """TODO: Docstring for get_group_desc_table.
 
@@ -63,6 +66,7 @@ def get_group_desc_table(ph, block_size):
     return Group_desc_table.parse(blob_page)
 
 
+@log_time
 @embed_params(blob_service=options.blob_service,
               container=options.container, vhd=options.vhd)
 def get_blob_page(ph, offset, page_size,
@@ -81,6 +85,7 @@ def get_blob_page(ph, offset, page_size,
     return blob_page
 
 
+@log_time
 def get_data_dir(dir_ptr, block_size):
     """TODO: Docstring for get_data_dir.
 
@@ -95,6 +100,7 @@ def get_data_dir(dir_ptr, block_size):
     return blob_page
 
 
+@log_time
 def get_data_indir(ph, block_size, indir_ptr, dir_type):
     """TODO: Docstring for get_data_indir1.
 
@@ -122,6 +128,7 @@ def get_data_indir(ph, block_size, indir_ptr, dir_type):
     return data
 
 
+@log_time
 def get_data_extent(ph, extent, block_size):
     """TODO: Docstring for get_data_extent.
 
@@ -132,11 +139,12 @@ def get_data_extent(ph, extent, block_size):
     """
     block_ptr = (extent.start_hi << 32) + extent.start_lo
     offset = block_ptr_to_byte(block_ptr, block_size)
-    blob_page = get_blob_page(ph, offset, extent.len*block_size-1)
+    blob_page = get_blob_page(ph, offset, extent.len*block_size)
 
     return blob_page
 
 
+@log_time
 def get_data_idx(ph, idx, block_size):
     """TODO: Docstring for get_data_idx.
 
@@ -147,13 +155,14 @@ def get_data_idx(ph, idx, block_size):
     """
     block_ptr = (idx.leaf_hi << 32) + idx.leaf_lo
     offset = block_ptr_to_byte(block_ptr, block_size)
-    blob_page = get_blob_page(ph, offset, block_size-1)
+    blob_page = get_blob_page(ph, offset, block_size)
     Node_block = Struct('index_node_block', Ext4_extent_header,
                         Array(block_size/12, Ext4_extent))
 
     return Node_block.parse(blob_page)
 
 
+@log_time
 def get_data_ext4_tree(ph, extent_tree, block_size):
     """TODO: Docstring for get_data_from_ext4_i_block.
 
@@ -176,11 +185,12 @@ def get_data_ext4_tree(ph, extent_tree, block_size):
                       if index < extent_tree.ext4_extent_header.entries],
                      key=lambda e: e[0])
 
-    return reduce(lambda a, b: (0, a[1]+b[1]), tmp)[1]
+    return reduce(lambda a, b: (0, a[1]+b[1]), tmp, (0, ''))[1]
 
 
+@log_time
 def download_ext3_file(ph, inode, filename, block_size):
-    """TODO: Docstring for get_data_from_inode.
+    """TODO: Docstring for download_ext3_file.
 
     :inode: TODO
     :options: TODO
@@ -207,8 +217,10 @@ def download_ext3_file(ph, inode, filename, block_size):
     return True
 
 
-def download_ext4_file(ph, inode, filename, block_size):
-    """TODO: Docstring for get_data_from_ext4_inode.
+@log_time
+@embed_params(path=options.path)
+def download_ext4_file(ph, inode, filename, block_size, path):
+    """TODO: Docstring for download_ext4_file.
 
     :inode: TODO
     :options: TODO
@@ -218,12 +230,13 @@ def download_ext4_file(ph, inode, filename, block_size):
     data = get_data_ext4_tree(ph, inode.ext4_extent_tree,
                               block_size)[:inode.size]
 
-    with open(filename, 'w') as result:
+    with open(''.join(['.', join(path, filename)]), 'w') as result:
         result.write(data)
 
     return True
 
 
+@log_time
 def block_ptr_to_byte(block_ptr, block_size):
     """TODO: Docstring for block_ptr_to_byte.
 
@@ -235,6 +248,7 @@ def block_ptr_to_byte(block_ptr, block_size):
     return block_size * block_ptr
 
 
+@log_time
 def parse_KB(superblock):
     """TODO: Docstring for parse_KB.
 
@@ -252,8 +266,9 @@ def parse_KB(superblock):
     return result
 
 
+@log_time
 @embed_params(path_list=options.path_list)
-def search_dir(ph, inode, index, block_size, filetype, path_list):
+def search_log(ph, inode, index, block_size, filetype, get_inode, path_list):
     """TODO: Docstring for search_dir.
 
     :inode: TODO
@@ -266,24 +281,18 @@ def search_dir(ph, inode, index, block_size, filetype, path_list):
         Directory = OptionalGreedyRange(Dir_entry2)
         directory = Directory.parse(data)
         if index == len(path_list):
-            inodes =  [item.inode for item in directory
-                       if os.path.splitext(item.name)[1] == '.log']
+            return [(item.inode, item.name) for item in directory
+                    if splitext(item.name)[1] == '.log']
         else:
-            inodes =  [item.inode for item in directory
-                       if item.name == path_list[index]]
+            inodes = [search_log(ph, get_inode(item.inode),
+                                 index+1, block_size, filetype, get_inode)
+                      for item in directory if item.name == path_list[index]]
+            return inodes[0]
     else:
         pass
 
-    print directory
-    print len(data)
-    print len(directory)
-    print inodes
 
-    exit(0)
-
-    return inodes
-
-
+@log_time
 def parse_partition(partition):
     """TODO: Docstring for parse_partition.
 
@@ -295,40 +304,59 @@ def parse_partition(partition):
     ph = partition.starting_sector * 512
     superblock = get_superblock(ph)
     block_size = parse_KB(superblock)
+    inodes_per_group = superblock.inodes_per_group
     group_desc_table = get_group_desc_table(ph, block_size)
 
-    for group_desc in group_desc_table.group_desc:
-        if superblock.inode_size == 128:
-            if options.ext == 4:
-                Inode = Ext4_inode_128
-            else:
-                Inode = Ext3_inode_128
-        elif superblock.inode_size == 256:
-            if options.ext == 4:
-                Inode = Ext4_inode_256
-            else:
-                Inode = Ext3_inode_256
+    if superblock.inode_size == 128:
+        if options.ext == 4:
+            Inode = Ext4_inode_128
+        else:
+            Inode = Ext3_inode_128
+    elif superblock.inode_size == 256:
+        if options.ext == 4:
+            Inode = Ext4_inode_256
+        else:
+            Inode = Ext3_inode_256
+    Inode_table = Struct('inode_table',
+                         Array(inodes_per_group, Inode))
 
-        Inode_table = Struct('inode_table',
-                             Array(superblock.inodes_per_group, Inode))
+    table_size = inodes_per_group * superblock.inode_size
+
+    def get_inode(num):
+        """TODO: Docstring for get_inode.
+
+        :num: TODO
+        :group_desc_table: TODO
+        :returns: TODO
+
+        """
+        block_group = (num-1) / inodes_per_group
+        local_index = (num-1) % inodes_per_group
+
+        group_desc = group_desc_table.group_desc[block_group]
         offset = block_ptr_to_byte(group_desc.inode_table_ptr, block_size)
-        table_size = superblock.inodes_per_group * superblock.inode_size
         blob_page = get_blob_page(ph, offset, table_size)
         inode_table = Inode_table.parse(blob_page)
+        inode = inode_table.inode[local_index]
 
-        print inode_table.inode[1]
-        target = search_dir(ph, inode_table.inode[1], 0,
-                            block_size, superblock.feature_incompat.FILETYPE)
-        exit(0)
-
-        test_inode = inode_table.inode[422]
-        test_inode.flags.EXTENTS and \
-                download_ext4_file(test_inode, 'result.txt', block_size) or\
-                download_ext3_file(test_inode, 'result.txt', block_size)
-
-        exit(0)
+        return inode
 
 
+    root = get_inode(2)
+
+    target = [(get_inode(num), name) for num, name
+              in search_log(ph, root, 0, block_size,
+                            superblock.feature_incompat.FILETYPE, get_inode)]
+
+    [download_ext4_file(ph, inode, name, block_size)
+     for inode, name in target if inode.flags.EXTENTS is True]
+    [download_ext3_file(ph, inode, name, block_size)
+     for inode, name in target if inode.flags.EXTENTS is False]
+
+    exit(0)
+
+
+@log_time
 @embed_params(blob_service=options.blob_service,
               container=options.container, vhd=options.vhd)
 def parse_image(blob_service, container, vhd):
@@ -353,4 +381,9 @@ def parse_image(blob_service, container, vhd):
 
 
 if __name__ == '__main__':
+    if options.path[0] != '/':
+        print 'Support only absolute path.'
+        exit(0)
+
+    init_dir(''.join(['.', options.path]))
     check_vhd_type() == HD_TYPE_FIXED and parse_image()
