@@ -15,7 +15,6 @@ HD_TYPE_DYNAMIC = 3
 (options, args) = get_options()
 
 
-@log_time
 @embed_params(blob_service=options.blob_service,
               container=options.container, vhd=options.vhd)
 def check_vhd_type(blob_service, container, vhd):
@@ -35,7 +34,6 @@ def check_vhd_type(blob_service, container, vhd):
     return hd_ftr.type
 
 
-@log_time
 def get_superblock(ph):
     """TODO: Docstring for get_superblock.
 
@@ -49,7 +47,6 @@ def get_superblock(ph):
     return Superblock.parse(blob_page)
 
 
-@log_time
 def get_group_desc_table(ph, block_size):
     """TODO: Docstring for get_group_desc_table.
 
@@ -66,7 +63,6 @@ def get_group_desc_table(ph, block_size):
     return Group_desc_table.parse(blob_page)
 
 
-@log_time
 @embed_params(blob_service=options.blob_service,
               container=options.container, vhd=options.vhd)
 def get_blob_page(ph, offset, page_size,
@@ -85,7 +81,6 @@ def get_blob_page(ph, offset, page_size,
     return blob_page
 
 
-@log_time
 def get_data_dir(dir_ptr, block_size):
     """TODO: Docstring for get_data_dir.
 
@@ -100,7 +95,6 @@ def get_data_dir(dir_ptr, block_size):
     return blob_page
 
 
-@log_time
 def get_data_indir(ph, block_size, indir_ptr, dir_type):
     """TODO: Docstring for get_data_indir1.
 
@@ -128,7 +122,6 @@ def get_data_indir(ph, block_size, indir_ptr, dir_type):
     return data
 
 
-@log_time
 def get_data_extent(ph, extent, block_size):
     """TODO: Docstring for get_data_extent.
 
@@ -144,7 +137,6 @@ def get_data_extent(ph, extent, block_size):
     return blob_page
 
 
-@log_time
 def get_data_idx(ph, idx, block_size):
     """TODO: Docstring for get_data_idx.
 
@@ -162,7 +154,6 @@ def get_data_idx(ph, idx, block_size):
     return Node_block.parse(blob_page)
 
 
-@log_time
 def get_data_ext4_tree(ph, extent_tree, block_size):
     """TODO: Docstring for get_data_from_ext4_i_block.
 
@@ -188,7 +179,6 @@ def get_data_ext4_tree(ph, extent_tree, block_size):
     return reduce(lambda a, b: (0, a[1]+b[1]), tmp, (0, ''))[1]
 
 
-@log_time
 def download_ext3_file(ph, inode, filename, block_size):
     """TODO: Docstring for download_ext3_file.
 
@@ -217,7 +207,6 @@ def download_ext3_file(ph, inode, filename, block_size):
     return True
 
 
-@log_time
 @embed_params(path=options.path)
 def download_ext4_file(ph, inode, filename, block_size, path):
     """TODO: Docstring for download_ext4_file.
@@ -236,7 +225,6 @@ def download_ext4_file(ph, inode, filename, block_size, path):
     return True
 
 
-@log_time
 def block_ptr_to_byte(block_ptr, block_size):
     """TODO: Docstring for block_ptr_to_byte.
 
@@ -248,7 +236,6 @@ def block_ptr_to_byte(block_ptr, block_size):
     return block_size * block_ptr
 
 
-@log_time
 def parse_KB(superblock):
     """TODO: Docstring for parse_KB.
 
@@ -266,7 +253,6 @@ def parse_KB(superblock):
     return result
 
 
-@log_time
 @embed_params(path_list=options.path_list)
 def search_log(ph, inode, index, block_size, filetype, get_inode, path_list):
     """TODO: Docstring for search_dir.
@@ -292,7 +278,6 @@ def search_log(ph, inode, index, block_size, filetype, get_inode, path_list):
         pass
 
 
-@log_time
 def parse_partition(partition):
     """TODO: Docstring for parse_partition.
 
@@ -356,7 +341,6 @@ def parse_partition(partition):
     exit(0)
 
 
-@log_time
 @embed_params(blob_service=options.blob_service,
               container=options.container, vhd=options.vhd)
 def parse_image(blob_service, container, vhd):
