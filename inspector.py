@@ -353,7 +353,7 @@ def parse_partition(partition):
     len2 = len([download_ext3_file(ph, inode, name, block_size)
                 for inode, name in target if inode.flags.EXTENTS is False])
 
-    print '%d + %d files have been downloaded.' % (len1, len2)
+    print '%d ext4 files + %d ext2/3 files have been downloaded.' % (len1, len2)
 
     return True
 
