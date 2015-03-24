@@ -97,7 +97,7 @@ def get_blob_page(ph, offset, page_size,
     :returns: TODO
 
     """
-    rangerange = 'bytes=' + str(ph+offset) + '-' + str(ph+offset+page_size-1)
+    rangerange = 'bytes=%d-%d' % (ph+offset, ph+offset+page_size-1)
 
     return blob_service.get_blob(container, vhd, x_ms_range=rangerange)
 
@@ -368,18 +368,13 @@ def part_type(pt):
     return partition_type[pt]
 
 
-@embed_params(blob_service=options.blob_service,
-              container=options.container, vhd=options.vhd)
-def parse_image(blob_service, container, vhd):
+def parse_image():
     """TODO: Docstring for parse_image.
 
-    :options: TODO
     :returns: TODO
 
     """
-    blob_page = blob_service.get_blob(container, vhd, x_ms_range='bytes=0-511')
-
-    mbr = Mbr.parse(blob_page)
+    mbr = Mbr.parse(get_blob_page(0, 0, 512))
 
     for partition in mbr.mbr_partition_entry:
         pt = partition.partition_type
