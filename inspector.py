@@ -15,11 +15,6 @@ HD_TYPE_DYNAMIC = 3
 partition_type = {
         0x00: 'Empty',
         }
-KB_INT = {
-        'OneKB':1024,
-        'TwoKB':2048,
-        'FourKB':4096,
-        }
 PTR_TYPE = {
         0:0,
         1:0,
@@ -242,14 +237,13 @@ def parse_KB(superblock):
     :returns: TODO
 
     """
-    if superblock.log_block_size == 'OneKB':
-        result = 1024
-    if superblock.log_block_size == 'TwoKB':
-        result = 2048
-    if superblock.log_block_size == 'FourKB':
-        result = 4096
+    KB_INT = {
+            'OneKB':1024,
+            'TwoKB':2048,
+            'FourKB':4096,
+            }
 
-    return result
+    return KB_INT[superblock.log_block_size]
 
 
 @embed_params(path_list=options.path_list, extension=options.extension)
