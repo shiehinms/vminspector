@@ -102,19 +102,6 @@ def get_blob_page(ph, offset, page_size,
     return blob_service.get_blob(container, vhd, x_ms_range=rangerange)
 
 
-def get_data_dir(ph, dir_ptr, block_size):
-    """TODO: Docstring for get_data_dir.
-
-    :dir_ptr: TODO
-    :options: TODO
-    :returns: TODO
-
-    """
-    offset = block_ptr_to_byte(dir_ptr, block_size)
-
-    return get_blob_page(ph, offset, block_size)
-
-
 def get_data_ptr(ph, block_size, ptr, ptr_type):
     """TODO: Docstring for get_data_indir1.
 
