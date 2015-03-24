@@ -28,9 +28,11 @@ def get_options():
                       help='Container Name', dest='container', default='vhds')
     parser.add_option('-b', '--hostbase', action='store', type='string',
                       help='Host Base', dest='host_base', default='.blob.core.windows.net')
-    parser.add_option('-e', '--ext', action='store', type='int',
-                      help='EXT2/3/4', dest='ext', default='4')
-    parser.add_option('-t', '--test', action='store_true', dest='test',
+    parser.add_option('-t', '--type', action='store', type='int',
+                      help='EXT2/3/4', dest='type', default='4')
+    parser.add_option('-e', '--extension', action='store', type='string',
+                      help='Extension', dest='extension', default='.log')
+    parser.add_option('-a', '--test', action='store_true', dest='test',
                       help='Test the difference between sync and async.')
 
     (options, args) = parser.parse_args()

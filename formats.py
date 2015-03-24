@@ -5,20 +5,6 @@
 from construct import *
 
 
-LChar = SLInt8
-ULChar = ULInt8
-BChar = SBInt8
-UBInt8 = UBInt8
-SLInt16 = SLInt16
-ULInt16 = ULInt16
-BShort = SBInt16
-UBShort = UBInt16
-SLInt32 = SLInt32
-ULInt32 = ULInt32
-BLong = SBInt32
-UBInt32 = UBInt32
-
-
 Superblock = Struct("superblock",
                 ULInt32('inodes_count'),
                 ULInt32('blocks_count'),
@@ -261,16 +247,6 @@ Ext4_inode_256 = Struct("inode",
                         Embed(Ext4_inode_128),
                         Padding(128),
                         )
-
-
-# special inodes
-EXT2_BAD_INO = 1
-EXT2_ROOT_INO = 2
-EXT2_ACL_IDX_INO = 3
-EXT2_ACL_DATA_INO = 4
-EXT2_BOOT_LOADER_INO = 5
-EXT2_UNDEL_DIR_INO = 6
-EXT2_FIRST_INO = 11 
 
 
 Dir_entry1 = Struct("dir_entry1",

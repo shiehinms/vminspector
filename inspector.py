@@ -184,22 +184,22 @@ def get_data_ext4_tree(ph, extent_tree, block_size):
 
     """
     if extent_tree.ext4_extent_header.depth == 0:
-        tmp = sorted([(extent.block, get_data_extent(ph, extent, block_size))
+        tmp = sorted(((extent.block, get_data_extent(ph, extent, block_size))
                       for index, extent in enumerate(extent_tree.ext4_extent)
-                      if index < extent_tree.ext4_extent_header.entries],
+                      if index < extent_tree.ext4_extent_header.entries),
                      key=lambda e: e[0])
     else:
         Indexs = Array(extent_tree.ext4_extent_header.max, Ext4_extent_idx)
         indexs = Indexs.parse(Ext4_extents.build(extent_tree.ext4_extent))
-        tmp = sorted([(idx.block,
+        tmp = sorted(((idx.block,
                        get_data_ext4_tree(ph, get_data_idx(ph, idx,
                                                            block_size),
                                           block_size))
                       for index, idx in enumerate(indexs)
-                      if index < extent_tree.ext4_extent_header.entries],
+                      if index < extent_tree.ext4_extent_header.entries),
                      key=lambda e: e[0])
 
-    return reduce(lambda a, b: (0, a[1]+b[1]), tmp, (0, ''))[1]
+    return reduce(lambda a, b: (0, ''.join([a[1], b[1]])), tmp, (0, ''))[1]
 
 
 def download_ext3_file(ph, inode, filename, block_size):
@@ -265,8 +265,9 @@ def parse_KB(superblock):
     return result
 
 
-@embed_params(path_list=options.path_list)
-def search_log(ph, inode, index, block_size, filetype, get_inode, path_list):
+@embed_params(path_list=options.path_list, extension=options.extension)
+def search_log(ph, inode, index, block_size,
+               filetype, get_inode, path_list, extension):
     """TODO: Docstring for search_dir.
 
     :inode: TODO
@@ -280,7 +281,7 @@ def search_log(ph, inode, index, block_size, filetype, get_inode, path_list):
         directory = Directory.parse(data)
         if index == len(path_list):
             return [(item.inode, item.name) for item in directory
-                    if splitext(item.name)[1] == '.log']
+                    if splitext(item.name)[1] == extension]
         else:
             inodes = [search_log(ph, get_inode(item.inode),
                                  index+1, block_size, filetype, get_inode)
@@ -308,12 +309,12 @@ def parse_partition(partition):
     group_desc_table = get_group_desc_table(ph, block_size)
 
     if superblock.inode_size == 128:
-        if options.ext == 4:
+        if options.type == 4:
             Inode = Ext4_inode_128
         else:
             Inode = Ext3_inode_128
     elif superblock.inode_size == 256:
-        if options.ext == 4:
+        if options.type == 4:
             Inode = Ext4_inode_256
         else:
             Inode = Ext3_inode_256
