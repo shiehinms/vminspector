@@ -10,27 +10,9 @@ from operator import add
 from os.path import splitext, join
 
 
-HD_TYPE_FIXED = 2
-HD_TYPE_DYNAMIC = 3
-partition_type = {
-        0x00: 'Empty',
-        }
 PTR_TYPE = {
-        0:0,
-        1:0,
-        2:0,
-        3:0,
-        4:0,
-        5:0,
-        6:0,
-        7:0,
-        8:0,
-        9:0,
-        10:0,
-        11:0,
-        12:1,
-        13:2,
-        14:3,
+        0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0, 11:0,
+        12:1, 13:2, 14:3,
         }
 (options, args) = get_options()
 
@@ -41,13 +23,12 @@ def check_vhd_type(blob_service, container, vhd):
     """TODO: Docstring for check_vhd_type.
 
     :properties: TODO
-    :options: TODO
     :returns: TODO
 
     """
     properties = blob_service.get_blob_properties(container, vhd)
-    rangerange = 'bytes=' + str(int(properties['content-length']) - 512) + \
-            '-' + str(int(properties['content-length'])-1)
+    rangerange = 'bytes=%d-%d' % (int(properties['content-length'])-512,
+                                  int(properties['content-length'])-1)
     blob_page = blob_service.get_blob(container, vhd, x_ms_range=rangerange)
 
     return Hd_ftr.parse(blob_page).type
@@ -57,7 +38,6 @@ def get_superblock(ph):
     """TODO: Docstring for get_superblock.
 
     :partition: TODO
-    :options: TODO
     :returns: TODO
 
     """
@@ -67,7 +47,6 @@ def get_superblock(ph):
 def get_group_desc_table(ph, block_size):
     """TODO: Docstring for get_group_desc_table.
 
-    :options: TODO
     :returns: TODO
 
     """
@@ -75,9 +54,7 @@ def get_group_desc_table(ph, block_size):
     Group_desc_table = Struct('group_desc_table',
                               Array(block_size/32, Group_desc))
 
-    blob_page = get_blob_page(ph, offset, block_size)
-
-    return Group_desc_table.parse(blob_page)
+    return Group_desc_table.parse(get_blob_page(ph, offset, block_size))
 
 
 @embed_params(blob_service=options.blob_service,
@@ -88,7 +65,6 @@ def get_blob_page(ph, offset, page_size,
 
     :offset: TODO
     :page_size: TODO
-    :options: TODO
     :returns: TODO
 
     """
@@ -101,7 +77,6 @@ def get_data_ptr(ph, block_size, ptr, ptr_type):
     """TODO: Docstring for get_data_indir1.
 
     :indir_ptr: TODO
-    :options: TODO
     :returns: TODO
 
     """
@@ -132,7 +107,6 @@ def get_data_extent(ph, extent, block_size):
     """TODO: Docstring for get_data_extent.
 
     :extent: TODO
-    :options: TODO
     :returns: TODO
 
     """
@@ -146,7 +120,6 @@ def get_data_idx(ph, idx, block_size):
     """TODO: Docstring for get_data_idx.
 
     :idx: TODO
-    :options: TODO
     :returns: TODO
 
     """
@@ -188,7 +161,6 @@ def download_ext3_file(ph, inode, filename, block_size):
     """TODO: Docstring for download_ext3_file.
 
     :inode: TODO
-    :options: TODO
     :returns: TODO
 
     """
@@ -205,8 +177,6 @@ def download_ext3_file(ph, inode, filename, block_size):
 def download_ext4_file(ph, inode, filename, block_size, vhd, path):
     """TODO: Docstring for download_ext4_file.
 
-    :inode: TODO
-    :options: TODO
     :returns: TODO
 
     """
@@ -223,7 +193,6 @@ def block_ptr_to_byte(block_ptr, block_size):
     """TODO: Docstring for block_ptr_to_byte.
 
     :block_ptr: TODO
-    :options: TODO
     :returns: TODO
 
     """
@@ -251,7 +220,6 @@ def search_log(ph, inode, index, block_size,
                filetype, get_inode, path_list, extension):
     """TODO: Docstring for search_dir.
 
-    :inode: TODO
     :returns: TODO
 
     """
@@ -261,7 +229,7 @@ def search_log(ph, inode, index, block_size,
         Directory = OptionalGreedyRange(Dir_entry2)
         directory = Directory.parse(data)
         if index == len(path_list):
-            return [(item.inode, item.name) for item in directory
+            return [(get_inode(item.inode), item.name) for item in directory
                     if splitext(item.name)[1] == extension]
         else:
             inodes = [search_log(ph, get_inode(item.inode),
@@ -279,7 +247,6 @@ def parse_partition(partition):
     """TODO: Docstring for parse_partition.
 
     :partition: TODO
-    :options: TODO
     :returns: TODO
 
     """
@@ -299,9 +266,7 @@ def parse_partition(partition):
             Inode = Ext4_inode_256
         else:
             Inode = Ext3_inode_256
-    Inode_table = Struct('inode_table',
-                         Array(inodes_per_group, Inode))
-
+    Inode_table = Struct('inode_table', Array(inodes_per_group, Inode))
     table_size = inodes_per_group * superblock.inode_size
 
     def get_inode(num):
@@ -324,8 +289,7 @@ def parse_partition(partition):
         return inode
 
     root = get_inode(2)
-
-    target = [(get_inode(num), name) for num, name
+    target = [(inode, name) for inode, name
               in search_log(ph, root, 0, block_size,
                             superblock.feature_incompat.FILETYPE, get_inode)]
 
@@ -333,7 +297,6 @@ def parse_partition(partition):
                 for inode, name in target if inode.flags.EXTENTS is True])
     len2 = len([download_ext3_file(ph, inode, name, block_size)
                 for inode, name in target if inode.flags.EXTENTS is False])
-
     print '%d ext4 files + %d ext2/3 files have been downloaded.' % (len1, len2)
 
     return True
@@ -346,6 +309,10 @@ def part_type(pt):
     :returns: TODO
 
     """
+    partition_type = {
+            0x00: 'Empty',
+            }
+
     return partition_type[pt]
 
 
@@ -362,7 +329,8 @@ def parse_image():
         if pt == 0x83 or pt == 0x93:
             partition.boot_indicator == 0x80 and parse_partition(partition)
         else:
-            print 'Unsupported \'partition type\' / \'file system\'.%d' % (pt)
+            print 'Unsupported \'partition type\' / \'file system\'. \
+                    status : %d' % (pt)
 
     return True
 
@@ -372,5 +340,9 @@ if __name__ == '__main__':
         print 'Support only absolute path.'
         exit(0)
 
+    HD_TYPE_FIXED = 2
+    HD_TYPE_DYNAMIC = 3
+
     init_dir(''.join(['./', options.vhd, options.path]))
-    check_vhd_type() == HD_TYPE_FIXED and parse_image()
+    check_vhd_type() == HD_TYPE_FIXED and parse_image() or \
+            check_vhd_type() == HD_TYPE_DYNAMIC and True

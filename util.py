@@ -116,8 +116,6 @@ def init_dir(path):
         exists(path) and os.unlink(path)
         os.makedirs(path)
 
-    return path
-
 
 def join_data(a, b):
     """TODO: Docstring for join_data.
