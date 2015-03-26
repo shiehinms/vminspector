@@ -90,15 +90,8 @@ def get_data_ptr(ph, block_size, ptr, ptr_type):
                             Array(block_size/4, ULInt32('indir_ptr')))
     parsed = Indir_ptr_list.parse(blob_page)
 
-    if ptr_type == 1:
-        data = reduce(add, (get_data_ptr(ph, block_size, ptr, 0)
-                            for ptr in parsed.indir_ptr_list))
-    elif ptr_type == 2:
-        data = reduce(add, (get_data_ptr(ph, block_size, ptr1, 1)
-                            for ptr1 in parsed.indir_ptr_list))
-    elif ptr_type == 3:
-        data = reduce(add, (get_data_ptr(ph, block_size, ptr2, 2)
-                            for ptr2 in parsed.indir_ptr_list))
+    data = reduce(add, (get_data_ptr(ph, block_size, ptr, ptr_type-1)
+                        for ptr in parsed.indir_ptr_list))
 
     return data
 
@@ -216,9 +209,9 @@ def parse_KB(superblock):
 
 
 @embed_params(path_list=options.path_list, extension=options.extension)
-def search_log(ph, inode, index, block_size,
+def search_i(ph, inode, index, block_size,
                filetype, get_inode, path_list, extension):
-    """TODO: Docstring for search_dir.
+    """TODO: Docstring for search_i.
 
     :returns: TODO
 
@@ -226,13 +219,12 @@ def search_log(ph, inode, index, block_size,
     data = get_data_ext4_tree(ph, inode.ext4_extent_tree, block_size)
 
     if filetype:
-        Directory = OptionalGreedyRange(Dir_entry2)
-        directory = Directory.parse(data)
+        directory = Dirs2.parse(data)
         if index == len(path_list):
             return [(get_inode(item.inode), item.name) for item in directory
                     if splitext(item.name)[1] == extension]
         else:
-            inodes = [search_log(ph, get_inode(item.inode),
+            inodes = [search_i(ph, get_inode(item.inode),
                                  index+1, block_size, filetype, get_inode)
                       for item in directory if item.name == path_list[index]]
             if inodes:
@@ -240,7 +232,7 @@ def search_log(ph, inode, index, block_size,
             else:
                 return []
     else:
-        pass
+        pass # pending.
 
 
 def parse_partition(partition):
@@ -255,17 +247,12 @@ def parse_partition(partition):
     block_size = parse_KB(superblock)
     inodes_per_group = superblock.inodes_per_group
     group_desc_table = get_group_desc_table(ph, block_size)
+    inode_type = {
+            128:{4:Ext4_inode_128, 3:Ext3_inode_128,},
+            256:{4:Ext4_inode_256, 3:Ext3_inode_256,},
+            }
 
-    if superblock.inode_size == 128:
-        if options.type == 4:
-            Inode = Ext4_inode_128
-        else:
-            Inode = Ext3_inode_128
-    elif superblock.inode_size == 256:
-        if options.type == 4:
-            Inode = Ext4_inode_256
-        else:
-            Inode = Ext3_inode_256
+    Inode = inode_type[superblock.inode_size][options.type]
     Inode_table = Struct('inode_table', Array(inodes_per_group, Inode))
     table_size = inodes_per_group * superblock.inode_size
 
@@ -290,8 +277,8 @@ def parse_partition(partition):
 
     root = get_inode(2)
     target = [(inode, name) for inode, name
-              in search_log(ph, root, 0, block_size,
-                            superblock.feature_incompat.FILETYPE, get_inode)]
+              in search_i(ph, root, 0, block_size,
+                          superblock.feature_incompat.FILETYPE, get_inode)]
 
     len1 = len([download_ext4_file(ph, inode, name, block_size)
                 for inode, name in target if inode.flags.EXTENTS is True])
