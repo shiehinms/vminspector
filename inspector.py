@@ -51,8 +51,7 @@ def get_group_desc_table(ph, block_size):
 
     """
     offset = int(ceil(2048.0 / block_size) * block_size)
-    Group_desc_table = Struct('group_desc_table',
-                              Array(block_size/32, Group_desc))
+    Group_desc_table = OptionalGreedyRange(Group_desc)
 
     return Group_desc_table.parse(get_blob_page(ph, offset, block_size))
 
@@ -234,6 +233,26 @@ def search_i(ph, inode, index, block_size, to_inode, path_list, extension):
             return []
 
 
+def ext3_to_ext4(inode):
+    """TODO: Docstring for ext3_to_ext4.
+
+    :inode: TODO
+    :returns: TODO
+
+    """
+    return Ext4_inode_128.parse(Ext3_inode_128.build(inode))
+
+
+def ext4_to_ext3(inode):
+    """TODO: Docstring for ext4_to_ext3.
+
+    :inode: TODO
+    :returns: TODO
+
+    """
+    return Ext3_inode_128.parse(Ext4_inode_128.build(inode))
+
+
 def parse_partition(partition):
     """TODO: Docstring for parse_partition.
 
@@ -266,13 +285,12 @@ def parse_partition(partition):
         block_group = (num-1) / inodes_per_group
         local_index = (num-1) % inodes_per_group
 
-        group_desc = group_desc_table.group_desc[block_group]
+        print len(group_desc_table), block_group
+        group_desc = group_desc_table[block_group]
         offset = block_ptr_to_byte(group_desc.inode_table_ptr, block_size)
         blob_page = get_blob_page(ph, offset, table_size)
         inode_table = Inode_table.parse(blob_page)
         inode = inode_table.inode[local_index]
-
-        print num, block_group, local_index, inode
 
         return inode
 
@@ -281,9 +299,9 @@ def parse_partition(partition):
               in search_i(ph, root, 0, block_size, to_inode)]
 
     # Reparse the inode. Pending
-    len1 = len([download_ext4_file(ph, inode, name, block_size)
+    len1 = len([download_ext4_file(ph, ext3_to_ext4(inode), name, block_size)
                 for inode, name in target if inode.flags.EXTENTS is True])
-    len2 = len([download_ext3_file(ph, inode, name, block_size)
+    len2 = len([download_ext3_file(ph, ext4_to_ext3(inode), name, block_size)
                 for inode, name in target if inode.flags.EXTENTS is False])
     print '%d ext4 files + %d ext2/3 files have been downloaded.' % (len1, len2)
 
