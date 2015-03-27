@@ -208,9 +208,10 @@ def parse_KB(superblock):
     return KB_INT[superblock.log_block_size]
 
 
+# If filetype feature flag is turn off, the ext4_dir_entry instead of
+# ext4_dir_entry2 will be used, but it doesn't matter to us.
 @embed_params(path_list=options.path_list, extension=options.extension)
-def search_i(ph, inode, index, block_size,
-               filetype, get_inode, path_list, extension):
+def search_i(ph, inode, index, block_size, to_inode, path_list, extension):
     """TODO: Docstring for search_i.
 
     :returns: TODO
@@ -218,21 +219,19 @@ def search_i(ph, inode, index, block_size,
     """
     data = get_data_ext4_tree(ph, inode.ext4_extent_tree, block_size)
 
-    if filetype:
-        directory = Dirs2.parse(data)
-        if index == len(path_list):
-            return [(get_inode(item.inode), item.name) for item in directory
-                    if splitext(item.name)[1] == extension]
-        else:
-            inodes = [search_i(ph, get_inode(item.inode),
-                                 index+1, block_size, filetype, get_inode)
-                      for item in directory if item.name == path_list[index]]
-            if inodes:
-                return inodes[0]
-            else:
-                return []
+    directory = Dirs2.parse(data)
+    if index == len(path_list):
+        return [(to_inode(item.inode), item.name) for item in directory
+                if splitext(item.name)[1] == extension]
     else:
-        pass # pending.
+        inodes = [search_i(ph, to_inode(item.inode),
+                           index+1, block_size, to_inode)
+                  for item in directory if item.name == path_list[index]]
+        if inodes:
+            return inodes[0]
+        else:
+            print '\033[91m The directory isn\'t exist.\033[0m'
+            return []
 
 
 def parse_partition(partition):
@@ -256,8 +255,8 @@ def parse_partition(partition):
     Inode_table = Struct('inode_table', Array(inodes_per_group, Inode))
     table_size = inodes_per_group * superblock.inode_size
 
-    def get_inode(num):
-        """TODO: Docstring for get_inode.
+    def to_inode(num):
+        """TODO: Docstring for to_inode.
 
         :num: TODO
         :group_desc_table: TODO
@@ -273,13 +272,15 @@ def parse_partition(partition):
         inode_table = Inode_table.parse(blob_page)
         inode = inode_table.inode[local_index]
 
+        print num, block_group, local_index, inode
+
         return inode
 
-    root = get_inode(2)
+    root = to_inode(2)
     target = [(inode, name) for inode, name
-              in search_i(ph, root, 0, block_size,
-                          superblock.feature_incompat.FILETYPE, get_inode)]
+              in search_i(ph, root, 0, block_size, to_inode)]
 
+    # Reparse the inode. Pending
     len1 = len([download_ext4_file(ph, inode, name, block_size)
                 for inode, name in target if inode.flags.EXTENTS is True])
     len2 = len([download_ext3_file(ph, inode, name, block_size)
@@ -316,15 +317,15 @@ def parse_image():
         if pt == 0x83 or pt == 0x93:
             partition.boot_indicator == 0x80 and parse_partition(partition)
         else:
-            print 'Unsupported \'partition type\' / \'file system\'. \
-                    status : %d' % (pt)
+            print '\033[93m Unsupported \'partition type\' / \'file system\'. \
+                    status : %d\033[0m' % (pt)
 
     return True
 
 
 if __name__ == '__main__':
     if options.path[0] != '/':
-        print 'Support only absolute path.'
+        print '\033[91m Support only absolute path.\033[0m'
         exit(0)
 
     HD_TYPE_FIXED = 2
