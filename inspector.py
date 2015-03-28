@@ -45,7 +45,7 @@ def get_superblock(ph):
     return Superblock.parse(get_blob_page(ph, 1024, 1024))
 
 
-def get_group_desc_table(ph, block_size):
+def get_group_desc_table(ph, block_size, gts):
     """TODO: Docstring for get_group_desc_table.
 
     :returns: TODO
@@ -54,7 +54,7 @@ def get_group_desc_table(ph, block_size):
     offset = int(ceil(2048.0 / block_size) * block_size)
     Group_desc_table = OptionalGreedyRange(Group_desc)
 
-    return Group_desc_table.parse(get_blob_page(ph, offset, block_size))
+    return Group_desc_table.parse(get_blob_page(ph, offset, block_size*gts))
 
 
 @embed_params(blob_service=options.blob_service,
@@ -222,7 +222,7 @@ def search_i(ph, inode, index, block_size, to_inode, path_list, extension):
     :returns: TODO
 
     """
-    if hasattr(inode.flags, 'EXTENTS') and inode.flags.EXTENTS is True:
+    if inode.flags.EXTENTS is True:
         data = get_data_ext4_tree(ph, inode.ext4_extent_tree, block_size)
     else:
         data = ''.join((get_data_ptr(ph, block_size, ptr, PTR_TYPE[index])
@@ -274,7 +274,9 @@ def parse_partition(partition):
     superblock = get_superblock(ph)
     block_size = parse_KB(superblock)
     inodes_per_group = superblock.inodes_per_group
-    group_desc_table = get_group_desc_table(ph, block_size)
+    # group descriptors table size
+    gts = ceil((superblock.inodes_count/inodes_per_group)/(block_size/32.0))
+    group_desc_table = get_group_desc_table(ph, block_size, gts)
     inode_type = {
             128:{4:Ext4_inode_128, 3:Ext3_inode_128,},
             256:{4:Ext4_inode_256, 3:Ext3_inode_256,},
@@ -282,7 +284,7 @@ def parse_partition(partition):
 
     Inode = inode_type[superblock.inode_size][4]
     Inode_table = Struct('inode_table', Array(inodes_per_group, Inode))
-    table_size = inodes_per_group * superblock.inode_size
+    its = inodes_per_group * superblock.inode_size # inode table size.
 
     def to_inode(num):
         """TODO: Docstring for to_inode.
@@ -297,11 +299,10 @@ def parse_partition(partition):
 
         group_desc = group_desc_table[block_group]
         offset = block_ptr_to_byte(group_desc.inode_table_ptr, block_size)
-        blob_page = get_blob_page(ph, offset, table_size)
+        blob_page = get_blob_page(ph, offset, its)
         inode_table = Inode_table.parse(blob_page)
         inode = inode_table.inode[local_index]
-        if hasattr(inode.flags, 'EXTENTS') is False \
-                or inode.flags.EXTENTS is False:
+        if not inode.flags.EXTENTS:
             inode = Ext3_inode_128.parse(Inode.build(inode))
 
         return inode
@@ -310,13 +311,10 @@ def parse_partition(partition):
     target = [(inode, name) for inode, name
               in search_i(ph, root, 0, block_size, to_inode)]
 
-    # Reparse the inode. Pending.
     len1 = len([download_ext4_file(ph, inode, name, block_size)
-                for inode, name in target if hasattr(inode.flags, 'EXTENTS')
-                and inode.flags.EXTENTS is True])
+                for inode, name in target if inode.flags.EXTENTS])
     len2 = len([download_ext3_file(ph, inode, name, block_size)
-                for inode, name in target if hasattr(inode.flags, 'EXTENTS') is False
-                or inode.flags.EXTENTS is False])
+                for inode, name in target if not inode.flags.EXTENTS])
     print '%d ext4 files + %d ext2/3 files have been downloaded.' % (len1, len2)
 
     return True
