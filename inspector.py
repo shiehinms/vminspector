@@ -325,8 +325,8 @@ def parse_image():
         if pt == 0x83 or pt == 0x93:
             partition.boot_indicator == 0x80 and parse_partition(partition)
         else:
-            print '\033[93m Unsupported \'partition type\' / \'file system\'. \
-                    status : %d\033[0m' % (pt)
+            print '\033[93m Unsupported \'partition type\' / \'file system\' \
+                    status : %d\033[0m .' % (pt)
 
     return True
 
