@@ -6,14 +6,13 @@ from util import *
 from formats import *
 from math import ceil
 from construct import *
-from operator import add
 from os.path import splitext, join
 from azure import WindowsAzureError
 
 
 PTR_TYPE = {
-        0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0, 10:0, 11:0,
-        12:1, 13:2, 14:3,
+        0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0,
+        8: 0, 9: 0, 10: 0, 11: 0, 12: 1, 13: 2, 14: 3,
         }
 (options, args) = get_options()
 
@@ -51,7 +50,7 @@ def get_group_desc_table(ph, block_size, gts):
     :returns: TODO
 
     """
-    offset = int(ceil(2048.0 / block_size) * block_size)
+    offset = ceil(2048.0 / block_size) * block_size
     Group_desc_table = OptionalGreedyRange(Group_desc)
 
     return Group_desc_table.parse(get_blob_page(ph, offset, block_size*gts))
@@ -94,8 +93,8 @@ def get_data_ptr(ph, block_size, ptr, ptr_type):
                             Array(block_size/4, ULInt32('indir_ptr')))
     parsed = Indir_ptr_list.parse(blob_page)
 
-    data = reduce(add, (get_data_ptr(ph, block_size, ptr, ptr_type-1)
-                        for ptr in parsed.indir_ptr_list))
+    data = ''.join((get_data_ptr(ph, block_size, ptr, ptr_type-1)
+                    for ptr in parsed.indir_ptr_list))
 
     return data
 
@@ -205,9 +204,9 @@ def parse_KB(superblock):
 
     """
     KB_INT = {
-            'OneKB':1024,
-            'TwoKB':2048,
-            'FourKB':4096,
+            'OneKB': 1024,
+            'TwoKB': 2048,
+            'FourKB': 4096,
             }
 
     return KB_INT[superblock.log_block_size]
@@ -222,11 +221,11 @@ def search_i(ph, inode, index, block_size, to_inode, path_list, extension):
     :returns: TODO
 
     """
-    if inode.flags.EXTENTS is True:
+    if inode.flags.EXTENTS:
         data = get_data_ext4_tree(ph, inode.ext4_extent_tree, block_size)
     else:
         data = ''.join((get_data_ptr(ph, block_size, ptr, PTR_TYPE[index])
-                        for index, ptr in enumerate(inode.blocks_ptr) if ptr != 0))
+                        for index, ptr in enumerate(inode.blocks_ptr) if ptr))
 
     directory = Dirs2.parse(data)
     if index == len(path_list):
@@ -241,26 +240,6 @@ def search_i(ph, inode, index, block_size, to_inode, path_list, extension):
         else:
             print '\033[91m The directory isn\'t exist.\033[0m'
             return []
-
-
-def ext3_to_ext4(inode):
-    """TODO: Docstring for ext3_to_ext4.
-
-    :inode: TODO
-    :returns: TODO
-
-    """
-    return Ext4_inode_128.parse(Ext3_inode_128.build(inode))
-
-
-def ext4_to_ext3(inode):
-    """TODO: Docstring for ext4_to_ext3.
-
-    :inode: TODO
-    :returns: TODO
-
-    """
-    return Ext3_inode_128.parse(Ext4_inode_128.build(inode))
 
 
 def parse_partition(partition):
@@ -278,13 +257,13 @@ def parse_partition(partition):
     gts = ceil((superblock.inodes_count/inodes_per_group)/(block_size/32.0))
     group_desc_table = get_group_desc_table(ph, block_size, gts)
     inode_type = {
-            128:{4:Ext4_inode_128, 3:Ext3_inode_128,},
-            256:{4:Ext4_inode_256, 3:Ext3_inode_256,},
+            128: {4: Ext4_inode_128, 3: Ext3_inode_128, },
+            256: {4: Ext4_inode_256, 3: Ext3_inode_256, },
             }
 
     Inode = inode_type[superblock.inode_size][4]
     Inode_table = Struct('inode_table', Array(inodes_per_group, Inode))
-    its = inodes_per_group * superblock.inode_size # inode table size.
+    its = inodes_per_group * superblock.inode_size  # inode table size.
 
     def to_inode(num):
         """TODO: Docstring for to_inode.
@@ -299,8 +278,7 @@ def parse_partition(partition):
 
         group_desc = group_desc_table[block_group]
         offset = block_ptr_to_byte(group_desc.inode_table_ptr, block_size)
-        blob_page = get_blob_page(ph, offset, its)
-        inode_table = Inode_table.parse(blob_page)
+        inode_table = Inode_table.parse(get_blob_page(ph, offset, its))
         inode = inode_table.inode[local_index]
         if not inode.flags.EXTENTS:
             inode = Ext3_inode_128.parse(Inode.build(inode))
