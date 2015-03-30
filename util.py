@@ -115,14 +115,3 @@ def init_dir(path):
     if not isdir(path):
         exists(path) and os.unlink(path)
         os.makedirs(path)
-
-
-def join_data(a, b):
-    """TODO: Docstring for join_data.
-
-    :a: TODO
-    :b: TODO
-    :returns: TODO
-
-    """
-    return ''.join([a, b])

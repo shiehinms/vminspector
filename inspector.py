@@ -153,6 +153,7 @@ def get_data_ext4_tree(ph, extent_tree, block_size):
     return reduce(lambda a, b: (0, ''.join([a[1], b[1]])), tmp, (0, ''))[1]
 
 
+# TODO(shiehinms): Check the inode type.
 @embed_params(vhd=options.vhd, path=options.path)
 def download_ext3_file(ph, inode, filename, block_size, vhd, path):
     """TODO: Docstring for download_ext3_file.
@@ -170,6 +171,7 @@ def download_ext3_file(ph, inode, filename, block_size, vhd, path):
     return True
 
 
+# TODO(shiehinms): Check the inode type.
 @embed_params(vhd=options.vhd, path=options.path)
 def download_ext4_file(ph, inode, filename, block_size, vhd, path):
     """TODO: Docstring for download_ext4_file.
@@ -298,6 +300,7 @@ def parse_partition(partition):
     return True
 
 
+# TODO(shiehinms): Complete the dictionary.
 def part_type(pt):
     """TODO: Docstring for part_type.
 
@@ -307,9 +310,10 @@ def part_type(pt):
     """
     partition_type = {
             0x00: 'Empty',
+            0x82: 'Linux swap space',
             }
 
-    return partition_type[pt]
+    return partition_type.setdefault(pt, 'Non-Linux')
 
 
 def parse_image():
@@ -325,13 +329,17 @@ def parse_image():
         if pt == 0x83 or pt == 0x93:
             partition.boot_indicator == 0x80 and parse_partition(partition)
         else:
-            print '\033[93m Unsupported \'partition type\' / \'file system\' \
-                    status : %d\033[0m .' % (pt)
+            print '\033[93m Unsupported \'partition t\' \'system\' \
+                    status : %s .\033[0m' % (part_type(pt))
 
     return True
 
 
-if __name__ == '__main__':
+def main():
+    """TODO: Docstring for main.
+    :returns: TODO
+
+    """
     if options.path[0] != '/':
         print '\033[91m Support only absolute path.\033[0m'
         exit(0)
@@ -342,3 +350,7 @@ if __name__ == '__main__':
     init_dir(''.join(['./', options.vhd, options.path]))
     check_vhd_type() == HD_TYPE_FIXED and parse_image() or \
             check_vhd_type() == HD_TYPE_DYNAMIC and True
+
+
+if __name__ == '__main__':
+    main()
