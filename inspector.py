@@ -292,9 +292,11 @@ def parse_partition(partition):
               in search_i(ph, root, 0, block_size, to_inode)]
 
     len1 = len([download_ext4_file(ph, inode, name, block_size)
-                for inode, name in target if inode.flags.EXTENTS])
+                for inode, name in target
+                if inode.flags.EXTENTS and not inode.mode.IFDIR])
     len2 = len([download_ext3_file(ph, inode, name, block_size)
-                for inode, name in target if not inode.flags.EXTENTS])
+                for inode, name in target
+                if not inode.flags.EXTENTS and not inode.mode.IFDIR])
     print '%d ext4 files + %d ext2/3 files have been downloaded.' % (len1, len2)
 
     return True
