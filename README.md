@@ -1,5 +1,5 @@
 # vminspector
-extract data from vhd
+Retrieve files from vhd which is stored in Azure Storage.
 
 Installation
 ============
@@ -20,11 +20,11 @@ Now, you can run the script by:
 
     python inspector.py
 
-and follow the help message(The usage part.).
+and follow the help message(The usage part.).    
 Please make sure that you have the access to the vhd you want to retrieve.
 
 Issue
 =====
-Only support accessing the blob by account key for the time being.    
-It should be able to achieve it by shared access signature in the near future.
+Only support accessing the blob by using account key for the time being.    
+And it should be able to achieve it by using shared access signature in the near future.
 
