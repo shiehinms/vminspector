@@ -1,5 +1,5 @@
 # vminspector
-Retrieve files from vhd which is stored in Azure Storage.
+Retrieve EXT2/3/4 files from vhd which is stored in Azure Storage.
 
 Installation
 ============
@@ -16,7 +16,7 @@ Python module: Construct==2.5.2, azure.
 
 Usage
 =====
-Now, you can run the script by:
+Now, you can run the script by following command:
 
     python inspector.py
 
