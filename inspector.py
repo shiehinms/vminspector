@@ -153,7 +153,6 @@ def get_data_ext4_tree(ph, extent_tree, block_size):
     return reduce(lambda a, b: (0, ''.join([a[1], b[1]])), tmp, (0, ''))[1]
 
 
-# TODO(shiehinms): Check the inode type.
 @embed_params(vhd=options.vhd, path=options.path)
 def download_ext3_file(ph, inode, filename, block_size, vhd, path):
     """TODO: Docstring for download_ext3_file.
@@ -163,7 +162,7 @@ def download_ext3_file(ph, inode, filename, block_size, vhd, path):
 
     """
     data = ''.join((get_data_ptr(ph, block_size, ptr, PTR_TYPE[index])
-                    for index, ptr in enumerate(inode.blocks_ptr) if ptr != 0))
+                    for index, ptr in enumerate(inode.blocks_ptr) if ptr))
 
     with open(''.join(['./', vhd, join(path, filename)]), 'w') as result:
         result.write(data)
@@ -171,7 +170,6 @@ def download_ext3_file(ph, inode, filename, block_size, vhd, path):
     return True
 
 
-# TODO(shiehinms): Check the inode type.
 @embed_params(vhd=options.vhd, path=options.path)
 def download_ext4_file(ph, inode, filename, block_size, vhd, path):
     """TODO: Docstring for download_ext4_file.

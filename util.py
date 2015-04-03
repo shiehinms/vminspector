@@ -1,20 +1,22 @@
-import os
-import optparse
+import sys
 from time import time
 from functools import wraps
+from os import unlink, makedirs
 from os.path import isdir, exists
+from optparse import OptionParser
 from azure.storage import BlobService
 
 
 VERSION = 'v1.0.0'
-USAGE = 'usage: %prog [options] arg1 arg2'
+USAGE = 'usage: python %prog -n account_name -k account_key -c container'
+'-v vhd -p path -e extension'
 
 
 def get_options():
     """TODO: Docstring for get_options.
     :returns: TODO
     """
-    parser = optparse.OptionParser(usage=USAGE, version=VERSION)
+    parser = OptionParser(usage=USAGE, version=VERSION)
 
     parser.add_option('-p', '--path', action='store', type='string',
                       help='Searching path', dest='path', default='/')
@@ -22,21 +24,22 @@ def get_options():
                       help='Account Name', dest='account_name', default='')
     parser.add_option('-k', '--key', action='store', type='string',
                       help='Account Key', dest='account_key', default='')
-    parser.add_option('-v', '--vhd', action='store', type='string',
-                      help='VHD File', dest='vhd', default='')
     parser.add_option('-c', '--container', action='store', type='string',
                       help='Container Name', dest='container', default='vhds')
+    parser.add_option('-v', '--vhd', action='store', type='string',
+                      help='VHD File', dest='vhd', default='')
     parser.add_option('-b', '--hostbase', action='store', type='string',
-                      help='Host Base', dest='host_base', default='.blob.core.windows.net')
+                      help='Host Base', dest='host_base',
+                      default='.blob.core.windows.net')
     parser.add_option('-t', '--type', action='store', type='int',
                       help='EXT2/3/4', dest='type', default='4')
     parser.add_option('-e', '--extension', action='store', type='string',
                       help='Extension', dest='extension', default='.log')
-    parser.add_option('-a', '--test', action='store_true', dest='test',
-                      help='Test the difference between sync and async.')
 
     (options, args) = parser.parse_args()
-    options.blob_service = BlobService(options.account_name, options.account_key,
+    len(sys.argv) == 1 and exit(parser.print_help())
+    options.blob_service = BlobService(options.account_name,
+                                       options.account_key,
                                        host_base=options.host_base)
     options.path_list = split_path(options.path)
 
@@ -56,8 +59,7 @@ def log_time(fn):
 
         result = fn(*args, **kwargs)
 
-        end_time = time()
-        print '%s -> Time used : %d\n' % (fn.__name__, end_time - start_time)
+        print '%s -> Time used : %d\n' % (fn.__name__, time() - start_time)
 
         return result
 
@@ -113,5 +115,5 @@ def init_dir(path):
 
     """
     if not isdir(path):
-        exists(path) and os.unlink(path)
-        os.makedirs(path)
+        exists(path) and unlink(path)
+        makedirs(path)
