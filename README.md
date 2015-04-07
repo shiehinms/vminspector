@@ -26,5 +26,5 @@ Please make sure that you have the access to the vhd you want to retrieve.
 Issue
 =====
 Only support accessing the blob by using account key for the time being.    
-And it should be able to achieve it by using shared access signature in the near future.
+And Vminspector should be able to retrieve vhd by using shared access signature in the near future.
 
