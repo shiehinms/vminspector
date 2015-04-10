@@ -1,6 +1,7 @@
 import sys
 from time import time
 from functools import wraps
+from urlparse import urlparse
 from os import unlink, makedirs
 from os.path import isdir, exists
 from optparse import OptionParser
@@ -31,6 +32,10 @@ def get_options():
     parser.add_option('-b', '--hostbase', action='store', type='string',
                       help='Host Base', dest='host_base',
                       default='.blob.core.windows.net')
+    parser.add_option('-u', '--url', action='store', type='string',
+                      help='Url of the vhd', dest='url', default='')
+    parser.add_option('-f', '--file', action='store', type='string',
+                      help='File name', dest='filename', default='')
     parser.add_option('-t', '--type', action='store', type='int',
                       help='EXT2/3/4', dest='type', default='4')
     parser.add_option('-e', '--extension', action='store', type='string',
@@ -38,6 +43,13 @@ def get_options():
 
     (options, args) = parser.parse_args()
     len(sys.argv) == 1 and exit(parser.print_help())
+    if options.url:
+        tmp = urlparse(options.url)
+        options.account_name = tmp.netloc.split('.')[0]
+        options.container = tmp.path.split('/')[1]
+        options.vhd = tmp.path.split('/')[2]
+        options.host_base = tmp.netloc[tmp.netloc.find('.'):]
+
     options.blob_service = BlobService(options.account_name,
                                        options.account_key,
                                        host_base=options.host_base)
