@@ -2,12 +2,15 @@
 # encoding: utf-8
 
 
+import requests
 from util import *
 from formats import *
 from math import ceil
 from construct import *
 from os.path import splitext, join
-from azure import WindowsAzureError
+from azure.http import HTTPRequest
+from azure import WindowsAzureError, _str_or_none, _str
+from azure.storage import _create_blob_result
 
 
 PTR_TYPE = {
@@ -62,7 +65,7 @@ def get_group_desc_table(ph, block_size, gts):
 @log_time
 @embed_params(blob_service=options.blob_service,
               container=options.container, vhd=options.vhd)
-def get_blob_page(ph, offset, page_size,
+def get_blob_1(ph, offset, page_size,
                   blob_service, container, vhd):
     """TODO: Docstring for get_blob_page.
 
@@ -76,7 +79,8 @@ def get_blob_page(ph, offset, page_size,
     return blob_service.get_blob(container, vhd, x_ms_range=rangerange)
 
 
-def get_blob_(url, params):
+@embed_params(url=options.url)
+def get_blob_2(ph, offset, page_size, url):
     """TODO: Docstring for get_blob_.
 
     :url: TODO
@@ -84,7 +88,16 @@ def get_blob_(url, params):
     :returns: TODO
 
     """
-    pass
+    headers = {'x-ms-range': 'bytes=%d-%d' % (ph+offset, ph+offset+page_size-1)}
+    r = requests.get(url, headers=headers)
+
+    return r.text
+
+
+if options.account_key:
+    get_blob_page = get_blob_1
+else:
+    get_blob_page = get_blob_2
 
 
 @log_time

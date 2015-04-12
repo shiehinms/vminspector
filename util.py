@@ -50,10 +50,13 @@ def get_options():
         options.vhd = tmp.path.split('/')[2]
         options.host_base = tmp.netloc[tmp.netloc.find('.'):]
 
-    options.blob_service = BlobService(options.account_name,
-                                       options.account_key,
-                                       host_base=options.host_base)
-    options.path_list = split_path(options.path)
+    if options.account_key:
+        options.blob_service = BlobService(options.account_name,
+                                           options.account_key,
+                                           host_base=options.host_base)
+        options.path_list = split_path(options.path)
+    else:
+        options.blob_service = None
 
     return (options, args)
 
