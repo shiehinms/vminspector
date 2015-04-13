@@ -67,7 +67,10 @@ def get_blob_by_sas(ph, offset, page_size, sas):
     :returns: TODO
 
     """
-    headers = {'x-ms-range': 'bytes=%d-%d' % (ph+offset, ph+offset+page_size-1), 'x-ms-version': '2012-02-12'}
+    headers = {'x-ms-range': 'bytes=%d-%d' \
+               % (ph+offset, ph+offset+page_size-1),
+               'x-ms-version': '2012-02-12',
+               }
     r = requests.get(sas, headers=headers)
 
     return r.content
