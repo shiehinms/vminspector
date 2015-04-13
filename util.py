@@ -9,8 +9,8 @@ from azure.storage import BlobService
 
 
 VERSION = 'v1.0.0'
-USAGE = 'usage: python %prog -n account_name -k account_key -c container'
-'-v vhd -p path -e extension'
+USAGE = 'usage: python %prog -u url -k account_key -p path -f filename\n' \
+'*(Required field)'
 
 
 def get_options():
@@ -19,44 +19,35 @@ def get_options():
     """
     parser = OptionParser(usage=USAGE, version=VERSION)
 
-    parser.add_option('-p', '--path', action='store', type='string',
-                      help='Searching path', dest='path', default='/')
-    parser.add_option('-n', '--name', action='store', type='string',
-                      help='Account Name', dest='account_name', default='')
+    parser.add_option('-u', '--url', action='store', type='string',
+                      help='Url of the vhd *', dest='url', default='')
     parser.add_option('-k', '--key', action='store', type='string',
                       help='Account Key', dest='account_key', default='')
-    parser.add_option('-c', '--container', action='store', type='string',
-                      help='Container Name', dest='container', default='vhds')
-    parser.add_option('-v', '--vhd', action='store', type='string',
-                      help='VHD File', dest='vhd', default='')
-    parser.add_option('-b', '--hostbase', action='store', type='string',
-                      help='Host Base', dest='host_base',
-                      default='.blob.core.windows.net')
-    parser.add_option('-u', '--url', action='store', type='string',
-                      help='Url of the vhd', dest='url', default='')
     parser.add_option('-f', '--file', action='store', type='string',
                       help='File name', dest='filename', default='')
-    parser.add_option('-t', '--type', action='store', type='int',
-                      help='EXT2/3/4', dest='type', default='4')
+    parser.add_option('-p', '--path', action='store', type='string',
+                      help='Searching path *', dest='path', default='/')
     parser.add_option('-e', '--extension', action='store', type='string',
                       help='Extension', dest='extension', default='.log')
+    parser.add_option('-t', '--type', action='store', type='int',
+                      help='EXT2/3/4; 2,3,4', dest='type', default='4')
 
     (options, args) = parser.parse_args()
     len(sys.argv) == 1 and exit(parser.print_help())
-    if options.url:
-        tmp = urlparse(options.url)
-        options.account_name = tmp.netloc.split('.')[0]
-        options.container = tmp.path.split('/')[1]
-        options.vhd = tmp.path.split('/')[2]
-        options.host_base = tmp.netloc[tmp.netloc.find('.'):]
+    tmp = urlparse(options.url)
+    options.account_name = tmp.netloc.split('.')[0]
+    options.container = tmp.path.split('/')[1]
+    options.vhd = tmp.path.split('/')[2]
+    options.host_base = tmp.netloc[tmp.netloc.find('.'):]
 
     if options.account_key:
         options.blob_service = BlobService(options.account_name,
                                            options.account_key,
                                            host_base=options.host_base)
-        options.path_list = split_path(options.path)
     else:
         options.blob_service = None
+
+    options.path_list = split_path(options.path)
 
     return (options, args)
 

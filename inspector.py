@@ -20,25 +20,6 @@ PTR_TYPE = {
 (options, args) = get_options()
 
 
-@log_time
-@embed_params(blob_service=options.blob_service,
-              container=options.container, vhd=options.vhd)
-def check_vhd_type(blob_service, container, vhd):
-    """TODO: Docstring for check_vhd_type.
-
-    :properties: TODO
-    :returns: TODO
-
-    """
-    properties = blob_service.get_blob_properties(container, vhd)
-    rangerange = 'bytes=%d-%d' % (int(properties['content-length'])-512,
-                                  int(properties['content-length'])-1)
-    blob_page = blob_service.get_blob(container, vhd, x_ms_range=rangerange)
-
-    return Hd_ftr.parse(blob_page).type
-
-
-@log_time
 def get_superblock(ph):
     """TODO: Docstring for get_superblock.
 
@@ -49,7 +30,6 @@ def get_superblock(ph):
     return Superblock.parse(get_blob_page(ph, 1024, 1024))
 
 
-@log_time
 def get_group_desc_table(ph, block_size, gts):
     """TODO: Docstring for get_group_desc_table.
 
@@ -62,10 +42,9 @@ def get_group_desc_table(ph, block_size, gts):
     return Group_desc_table.parse(get_blob_page(ph, offset, block_size*gts))
 
 
-@log_time
 @embed_params(blob_service=options.blob_service,
               container=options.container, vhd=options.vhd)
-def get_blob_1(ph, offset, page_size,
+def get_blob_by_key(ph, offset, page_size,
                   blob_service, container, vhd):
     """TODO: Docstring for get_blob_page.
 
@@ -79,8 +58,8 @@ def get_blob_1(ph, offset, page_size,
     return blob_service.get_blob(container, vhd, x_ms_range=rangerange)
 
 
-@embed_params(url=options.url)
-def get_blob_2(ph, offset, page_size, url):
+@embed_params(sas=options.url)
+def get_blob_by_sas(ph, offset, page_size, sas):
     """TODO: Docstring for get_blob_.
 
     :url: TODO
@@ -88,19 +67,45 @@ def get_blob_2(ph, offset, page_size, url):
     :returns: TODO
 
     """
-    headers = {'x-ms-range': 'bytes=%d-%d' % (ph+offset, ph+offset+page_size-1)}
-    r = requests.get(url, headers=headers)
+    headers = {'x-ms-range': 'bytes=%d-%d' % (ph+offset, ph+offset+page_size-1), 'x-ms-version': '2012-02-12'}
+    r = requests.get(sas, headers=headers)
 
-    return r.text
+    return r.content
 
 
 if options.account_key:
-    get_blob_page = get_blob_1
+    get_blob_page = get_blob_by_key
 else:
-    get_blob_page = get_blob_2
+    get_blob_page = get_blob_by_sas
 
 
-@log_time
+@embed_params(sas=options.url, blob_service=options.blob_service,
+              container=options.container, vhd=options.vhd)
+def check_vhd_type(sas, blob_service, container, vhd):
+    """TODO: Docstring for check_vhd_type.
+
+    :properties: TODO
+    :returns: TODO
+
+    """
+    if blob_service:
+        properties = blob_service.get_blob_properties(container, vhd)
+    else:
+        r = requests.head(sas, headers={
+                'x-ms-version': '2012-02-12',
+                'Connection': 'Keep-Alive'
+                })
+        if not r.ok:
+            print '\033[91m Download failure. Status code: %d\033[0m' \
+                    % (r.status_code)
+            exit(0)
+        properties = r.headers
+
+    blob_page = get_blob_page(0, int(properties['content-length'])-512, 512)
+
+    return Hd_ftr.parse(blob_page).type
+
+
 def get_data_ptr(ph, block_size, ptr, ptr_type):
     """TODO: Docstring for get_data_indir1.
 
@@ -128,7 +133,6 @@ def get_data_ptr(ph, block_size, ptr, ptr_type):
     return data
 
 
-@log_time
 def get_data_extent(ph, extent, block_size):
     """TODO: Docstring for get_data_extent.
 
@@ -142,7 +146,6 @@ def get_data_extent(ph, extent, block_size):
     return get_blob_page(ph, offset, extent.len*block_size)
 
 
-@log_time
 def get_data_idx(ph, idx, block_size):
     """TODO: Docstring for get_data_idx.
 
@@ -158,7 +161,6 @@ def get_data_idx(ph, idx, block_size):
     return Node_block.parse(get_blob_page(ph, offset, block_size))
 
 
-@log_time
 def get_data_ext4_tree(ph, extent_tree, block_size):
     """TODO: Docstring for get_data_from_ext4_i_block.
 
@@ -185,7 +187,6 @@ def get_data_ext4_tree(ph, extent_tree, block_size):
     return reduce(lambda a, b: (0, ''.join([a[1], b[1]])), tmp, (0, ''))[1]
 
 
-@log_time
 @embed_params(vhd=options.vhd, path=options.path)
 def download_ext3_file(ph, inode, filename, block_size, vhd, path):
     """TODO: Docstring for download_ext3_file.
@@ -203,7 +204,6 @@ def download_ext3_file(ph, inode, filename, block_size, vhd, path):
     return True
 
 
-@log_time
 @embed_params(vhd=options.vhd, path=options.path)
 def download_ext4_file(ph, inode, filename, block_size, vhd, path):
     """TODO: Docstring for download_ext4_file.
@@ -220,7 +220,6 @@ def download_ext4_file(ph, inode, filename, block_size, vhd, path):
     return True
 
 
-@log_time
 def block_ptr_to_byte(block_ptr, block_size):
     """TODO: Docstring for block_ptr_to_byte.
 
@@ -231,7 +230,6 @@ def block_ptr_to_byte(block_ptr, block_size):
     return block_size * block_ptr
 
 
-@log_time
 def parse_KB(superblock):
     """TODO: Docstring for parse_KB.
 
@@ -250,7 +248,6 @@ def parse_KB(superblock):
 
 # If filetype feature flag is turn off, the ext4_dir_entry instead of
 # ext4_dir_entry2 will be used, but it doesn't matter to us.
-@log_time
 @embed_params(path_list=options.path_list,
               filename=options.filename, extension=options.extension)
 def search_i(ph, inode, index, block_size, to_inode,
@@ -282,7 +279,6 @@ def search_i(ph, inode, index, block_size, to_inode,
             return []
 
 
-@log_time
 def parse_partition(partition):
     """TODO: Docstring for parse_partition.
 
@@ -342,7 +338,6 @@ def parse_partition(partition):
 
 
 # TODO(shiehinms): Complete the dictionary.
-@log_time
 def part_type(pt):
     """TODO: Docstring for part_type.
 
@@ -358,7 +353,6 @@ def part_type(pt):
     return partition_type.setdefault(pt, 'Non-Linux')
 
 
-@log_time
 def parse_image():
     """TODO: Docstring for parse_image.
 
