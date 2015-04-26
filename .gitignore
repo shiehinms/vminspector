@@ -7,6 +7,9 @@ lib
 local
 include
 
+# pyc
+*.pyc
+
 .Python
 
 # Vim
