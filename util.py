@@ -13,6 +13,15 @@ USAGE = 'usage: python %prog -u url -k account_key -p path -f filename\n' \
 '*(Required field)'
 
 
+def print_warning():
+    """TODO: Docstring for print_warning.
+    :returns: TODO
+
+    """
+    print 'Extension and Filename are mutually exclusive.'
+    return 1
+
+
 def get_options():
     """TODO: Docstring for get_options.
     :returns: TODO
@@ -28,12 +37,15 @@ def get_options():
     parser.add_option('-p', '--path', action='store', type='string',
                       help='Searching path *', dest='path', default='/')
     parser.add_option('-e', '--extension', action='store', type='string',
-                      help='Extension', dest='extension', default='.log')
+                      help='Extension', dest='extension', default='')
     parser.add_option('-t', '--type', action='store', type='int',
                       help='EXT2/3/4; 2,3,4', dest='type', default='4')
+    parser.add_option('--ls', action='store_true',
+                      help='List the dir', dest='ls', default=False)
 
     (options, args) = parser.parse_args()
     len(sys.argv) == 1 and exit(parser.print_help())
+    options.extension and options.filename and exit(print_warning())
     tmp = urlparse(options.url)
     options.account_name = tmp.netloc.split('.')[0]
     options.container = tmp.path.split('/')[1]
@@ -80,20 +92,9 @@ def embed_params(**kwargs):
 
     """
     def decorator(fn):
-        """TODO: Docstring for decorator.
-
-        :fn: TODO
-        :returns: TODO
-
-        """
         @wraps(fn)
         def wrapper(*arg):
-            """TODO: Docstring for wrapper.
 
-            :*arg: TODO
-            :returns: TODO
-
-            """
             return fn(*arg, **kwargs)
 
         return wrapper

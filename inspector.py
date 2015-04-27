@@ -8,9 +8,6 @@ from formats import *
 from math import ceil
 from construct import *
 from os.path import splitext, join
-from azure.http import HTTPRequest
-from azure import WindowsAzureError, _str_or_none, _str
-from azure.storage import _create_blob_result
 
 
 PTR_TYPE = {
@@ -20,6 +17,7 @@ PTR_TYPE = {
 (options, args) = get_options()
 
 
+@log_time
 def get_superblock(ph):
     """TODO: Docstring for get_superblock.
 
@@ -30,6 +28,7 @@ def get_superblock(ph):
     return Superblock.parse(get_blob_page(ph, 1024, 1024))
 
 
+@log_time
 def get_group_desc_table(ph, block_size, gts):
     """TODO: Docstring for get_group_desc_table.
 
@@ -42,6 +41,7 @@ def get_group_desc_table(ph, block_size, gts):
     return Group_desc_table.parse(get_blob_page(ph, offset, block_size*gts))
 
 
+@log_time
 @embed_params(blob_service=options.blob_service,
               container=options.container, vhd=options.vhd)
 def get_blob_by_key(ph, offset, page_size,
@@ -58,6 +58,7 @@ def get_blob_by_key(ph, offset, page_size,
     return blob_service.get_blob(container, vhd, x_ms_range=rangerange)
 
 
+@log_time
 @embed_params(sas=options.url)
 def get_blob_by_sas(ph, offset, page_size, sas):
     """TODO: Docstring for get_blob_.
@@ -82,6 +83,7 @@ else:
     get_blob_page = get_blob_by_sas
 
 
+@log_time
 @embed_params(sas=options.url, blob_service=options.blob_service,
               container=options.container, vhd=options.vhd)
 def check_vhd_type(sas, blob_service, container, vhd):
@@ -109,6 +111,7 @@ def check_vhd_type(sas, blob_service, container, vhd):
     return Hd_ftr.parse(blob_page).type
 
 
+@log_time
 def get_data_ptr(ph, block_size, ptr, ptr_type):
     """TODO: Docstring for get_data_indir1.
 
@@ -136,6 +139,7 @@ def get_data_ptr(ph, block_size, ptr, ptr_type):
     return data
 
 
+@log_time
 def get_data_extent(ph, extent, block_size):
     """TODO: Docstring for get_data_extent.
 
@@ -149,6 +153,7 @@ def get_data_extent(ph, extent, block_size):
     return get_blob_page(ph, offset, extent.len*block_size)
 
 
+@log_time
 def get_data_idx(ph, idx, block_size):
     """TODO: Docstring for get_data_idx.
 
@@ -164,6 +169,7 @@ def get_data_idx(ph, idx, block_size):
     return Node_block.parse(get_blob_page(ph, offset, block_size))
 
 
+@log_time
 def get_data_ext4_tree(ph, extent_tree, block_size):
     """TODO: Docstring for get_data_from_ext4_i_block.
 
@@ -190,6 +196,7 @@ def get_data_ext4_tree(ph, extent_tree, block_size):
     return reduce(lambda a, b: (0, ''.join([a[1], b[1]])), tmp, (0, ''))[1]
 
 
+@log_time
 @embed_params(vhd=options.vhd, path=options.path)
 def download_ext3_file(ph, inode, filename, block_size, vhd, path):
     """TODO: Docstring for download_ext3_file.
@@ -207,6 +214,7 @@ def download_ext3_file(ph, inode, filename, block_size, vhd, path):
     return True
 
 
+@log_time
 @embed_params(vhd=options.vhd, path=options.path)
 def download_ext4_file(ph, inode, filename, block_size, vhd, path):
     """TODO: Docstring for download_ext4_file.
@@ -223,6 +231,7 @@ def download_ext4_file(ph, inode, filename, block_size, vhd, path):
     return True
 
 
+@log_time
 def block_ptr_to_byte(block_ptr, block_size):
     """TODO: Docstring for block_ptr_to_byte.
 
@@ -233,6 +242,7 @@ def block_ptr_to_byte(block_ptr, block_size):
     return block_size * block_ptr
 
 
+@log_time
 def parse_KB(superblock):
     """TODO: Docstring for parse_KB.
 
@@ -251,6 +261,7 @@ def parse_KB(superblock):
 
 # If filetype feature flag is turn off, the ext4_dir_entry instead of
 # ext4_dir_entry2 will be used, but it doesn't matter to us.
+@log_time
 @embed_params(path_list=options.path_list,
               filename=options.filename, extension=options.extension)
 def search_i(ph, inode, index, block_size, to_inode,
@@ -268,9 +279,10 @@ def search_i(ph, inode, index, block_size, to_inode,
 
     directory = Dirs2.parse(data)
     if index == len(path_list):
-        return [(to_inode(item.inode), item.name) for item in directory
-                if item.name == options.filename or filename == '' and
-                splitext(item.name)[1] == extension]
+        return [(item.inode, item.name) for item in directory
+                if filename and item.name == filename
+                or extension and splitext(item.name)[1] == extension
+                or filename == '' and extension == '']
     else:
         inodes = [search_i(ph, to_inode(item.inode),
                            index+1, block_size, to_inode)
@@ -282,6 +294,7 @@ def search_i(ph, inode, index, block_size, to_inode,
             return []
 
 
+@log_time
 def parse_partition(partition):
     """TODO: Docstring for parse_partition.
 
@@ -300,11 +313,13 @@ def parse_partition(partition):
             128: {4: Ext4_inode_128, 3: Ext3_inode_128, },
             256: {4: Ext4_inode_256, 3: Ext3_inode_256, },
             }
+    inode_tables = {}
 
     Inode = inode_type[superblock.inode_size][4]
     Inode_table = Struct('inode_table', Array(inodes_per_group, Inode))
     its = inodes_per_group * superblock.inode_size  # inode table size.
 
+    @log_time
     def to_inode(num):
         """TODO: Docstring for to_inode.
 
@@ -316,9 +331,13 @@ def parse_partition(partition):
         block_group = (num-1) / inodes_per_group
         local_index = (num-1) % inodes_per_group
 
-        group_desc = group_desc_table[block_group]
-        offset = block_ptr_to_byte(group_desc.inode_table_ptr, block_size)
-        inode_table = Inode_table.parse(get_blob_page(ph, offset, its))
+        if block_group not in inode_tables:
+            group_desc = group_desc_table[block_group]
+            offset = block_ptr_to_byte(group_desc.inode_table_ptr, block_size)
+            inode_tables[block_group] = Inode_table.parse(
+                    get_blob_page(ph, offset, its))
+
+        inode_table = inode_tables[block_group]
         inode = inode_table.inode[local_index]
         if not inode.flags.EXTENTS:
             inode = Ext3_inode_128.parse(Inode.build(inode))
@@ -326,9 +345,16 @@ def parse_partition(partition):
         return inode
 
     root = to_inode(2)
-    target = [(inode, name) for inode, name
+    target = [(inode_num, name) for inode_num, name
               in search_i(ph, root, 0, block_size, to_inode)]
 
+    if options.ls:
+        for inode, name in target:
+            print name
+        print 'Total: %d files' % (len(target))
+        return True
+
+    target = [(to_inode(inode_num), name) for inode_num, name in target]
     len1 = len([download_ext4_file(ph, inode, name, block_size)
                 for inode, name in target
                 if inode.flags.EXTENTS and not inode.mode.IFDIR])
@@ -341,6 +367,7 @@ def parse_partition(partition):
 
 
 # TODO(shiehinms): Complete the dictionary.
+@log_time
 def part_type(pt):
     """TODO: Docstring for part_type.
 
@@ -356,6 +383,7 @@ def part_type(pt):
     return partition_type.setdefault(pt, 'Non-Linux')
 
 
+@log_time
 def parse_image():
     """TODO: Docstring for parse_image.
 
@@ -369,7 +397,7 @@ def parse_image():
         if pt == 0x83 or pt == 0x93:
             partition.boot_indicator == 0x80 and parse_partition(partition)
         else:
-            print '\033[93m Unsupported \'partition t\' \'system\' \
+            print '\033[93m Unsupported partition type \
                     status : %s .\033[0m' % (part_type(pt))
 
     return True
