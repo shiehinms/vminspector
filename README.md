@@ -65,7 +65,7 @@ The account key of your container. Notice that, -k and -e are mutually exclusive
 
 -f    
 
-the file which you want to retrieve. Notice that, the absolute path of the file should not be passed.
+Name of the file which you want to retrieve. Notice that, the absolute path of the file **should not** be passed.
 
 -
 
@@ -77,19 +77,29 @@ The directory which contain the file you want to retrieve.
 
 -e    
 
-The extension of files you want to retrieve. Notice that, -k and -e are mutually exclusive.
+The extension of the file you want to retrieve. Notice that, -k and -e are mutually exclusive.
 
 -
 
 -t    
 
-Predeclared the file system of your virtual machine if you actually know it. This option is used to speed up the parsing process.
+Optional. Predeclared the file system of your virtual machine if you know it. This option is used to speed up the parsing process.
 
 -
 
 --ls    
 
 If you want to inspect a specific directory before you take any action about it, you can list them.
+
+Exemple:
+--------
+Access with account key:    
+
+    python inspector.py -k ksjdfsajdfljsldflsadfjkasfd -u www.portal.com/shieh/shieh.vhd -p /var/log -f waggent.log
+    
+Access with account key:    
+
+    python -u www.portal.com/shieh/shieh.vhd -p /var/log -f waggent.log
 
 
 Issue
