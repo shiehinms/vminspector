@@ -1,4 +1,5 @@
 import sys
+import requests
 from time import time
 from functools import wraps
 from urlparse import urlparse
@@ -44,6 +45,7 @@ def get_options():
         options.blob_service = BlobService(options.account_name,
                                            options.account_key,
                                            host_base=options.host_base)
+        options.blob_service._httpclient.request_session = requests.Session()
     else:
         options.blob_service = None
 
