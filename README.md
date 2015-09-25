@@ -27,7 +27,7 @@ Python module: Construct==2.5.2, azure.
 
 Usage
 =====
-After installation of the tool and dependencies, you can run the script by following command:
+After the installation of the tool and dependencies, you can run the script by the following command:
 
     python inspector.py
 
