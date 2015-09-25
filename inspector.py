@@ -16,6 +16,7 @@ PTR_TYPE = {
         }
 (options, args) = get_options()
 
+s = requests.Session()
 
 @log_time
 def get_superblock(ph):
@@ -72,7 +73,7 @@ def get_blob_by_sas(ph, offset, page_size, sas):
                % (ph+offset, ph+offset+page_size-1),
                'x-ms-version': '2012-02-12',
                }
-    r = requests.get(sas, headers=headers)
+    r = s.get(sas, headers=headers)
 
     return r.content
 
@@ -393,12 +394,22 @@ def parse_image():
     mbr = Mbr.parse(get_blob_page(0, 0, 512))
 
     for partition in mbr.mbr_partition_entry:
+<<<<<<< HEAD
         pt = partition.partition_type
         if pt == 0x83 or pt == 0x93:
             partition.boot_indicator == 0x80 and parse_partition(partition)
         else:
             print '\033[93m Unsupported partition type \
                     status : %s .\033[0m' % (part_type(pt))
+=======
+        if partition.boot_indicator == 0x80:
+            pt = partition.partition_type
+            if pt == 0x83 or pt == 0x93:
+                parse_partition(partition)
+            else:
+                print '\033[93m Unsupported \'partition t\' \'system\' \
+                        status : %s .\033[0m' % (part_type(pt))
+>>>>>>> 80edb1c896a0ac89cbb8e23b2737fd9f70ab30fd
 
     return True
 
